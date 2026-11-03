@@ -25,7 +25,7 @@ export function EditionList({
   const groups = groupByDay(items);
   if (view === "grid") {
     return (
-      <div className="grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
           <div key={item.id} className="border-t border-separator">
             <ReportCard newsroom={newsroom} report={item} variant="tile" />

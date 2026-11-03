@@ -114,6 +114,8 @@
   body {
     @apply bg-canvas font-sans text-ui text-ink antialiased;
     font-feature-settings: "kern";
+    /* Long URLs and identifiers wrap instead of widening the page. */
+    overflow-wrap: break-word;
   }
 
   ::selection {
@@ -198,6 +200,7 @@
     @apply font-serif text-reading text-ink;
     font-optical-sizing: auto;
     hanging-punctuation: first;
+    overflow-wrap: anywhere;
   }
   .prose-report > * + * {
     margin-top: 1.1em;
@@ -329,11 +332,14 @@
   .prose-report table {
     @apply font-sans text-meta;
     width: 100%;
+    /* Tables scroll inside .table-scroll; words must not split to fit. */
+    overflow-wrap: normal;
     border-collapse: collapse;
     font-variant-numeric: tabular-nums;
   }
   .prose-report :where(th) {
     @apply font-medium text-ink-secondary;
+    white-space: nowrap;
     text-align: left;
     border-bottom: 1px solid var(--separator-strong);
   }

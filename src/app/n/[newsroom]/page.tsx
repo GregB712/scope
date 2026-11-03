@@ -82,7 +82,7 @@ export default async function TodayPage({ params }: PageProps<"/n/[newsroom]">) 
       {/* Lead: the latest edition */}
       <section
         aria-labelledby="lead-title"
-        className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]"
+        className="grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_20rem]"
       >
         <div>
           <p className="text-meta font-medium text-ink-secondary">
@@ -153,7 +153,7 @@ export default async function TodayPage({ params }: PageProps<"/n/[newsroom]">) 
       </section>
 
       {/* The week and the topics */}
-      <div className="grid gap-x-16 gap-y-16 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-16 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <section>
           <SectionHeading
             action={

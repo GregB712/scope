@@ -63,7 +63,7 @@ export default async function ReportPage({ params }: Props) {
             {report.title}
           </h1>
 
-          <dl className="mt-5 grid gap-x-6 gap-y-1.5 text-meta sm:grid-cols-[auto_1fr]">
+          <dl className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-1.5 text-meta sm:grid-cols-[auto_minmax(0,1fr)]">
             {generated && (
               <>
                 <dt className="text-ink-tertiary">Generated</dt>

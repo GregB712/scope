@@ -24,7 +24,7 @@ export function TopBar({ newsroom }: { newsroom: AuthorizedNewsroom }) {
         </div>
         <div className="flex items-center gap-4">
           <Suspense fallback={null}>
-            <SyncStatus newsroom={newsroom} className="hidden sm:inline" />
+            <SyncStatus newsroom={newsroom} className="hidden whitespace-nowrap sm:inline" />
           </Suspense>
           {/* Reserve the avatar's space so the bar does not shift when Clerk loads. */}
           <div className="grid size-7 place-items-center">

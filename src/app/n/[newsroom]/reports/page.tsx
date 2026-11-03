@@ -54,7 +54,7 @@ export default async function ArchivePage({
         )} imported from your source.`}
       />
 
-      <div className="grid gap-10 lg:grid-cols-[11rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[11rem_minmax(0,1fr)]">
         {/* Year and month navigation */}
         <nav aria-label="Months" className="order-2 lg:order-1">
           <Link

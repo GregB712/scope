@@ -10,7 +10,7 @@ export default async function SettingsLayout({
   return (
     <>
       <PageHeader title="Settings" />
-      <div className="grid gap-10 lg:grid-cols-[12rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <SettingsNav slug={newsroom.slug} />
         <div className="min-w-0">{children}</div>
       </div>

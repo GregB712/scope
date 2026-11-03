@@ -6,7 +6,7 @@ export default function Loading() {
     <div
       aria-busy="true"
       aria-label="Loading"
-      className="grid gap-16 lg:grid-cols-[minmax(0,1fr)_20rem]"
+      className="grid grid-cols-[minmax(0,1fr)] gap-16 lg:grid-cols-[minmax(0,1fr)_20rem]"
     >
       <div>
         <Skeleton className="h-4 w-48" />

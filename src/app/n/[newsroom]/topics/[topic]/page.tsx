@@ -51,7 +51,7 @@ export default async function TopicPage({ params, searchParams }: Props) {
           </Link>
         }
       />
-      <div className="grid gap-x-16 gap-y-14 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-14 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section>
           <SectionHeading>Stories</SectionHeading>
           {stories.items.length ? (

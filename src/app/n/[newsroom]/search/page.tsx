@@ -45,7 +45,7 @@ export default async function SearchPage({
       ) : count === 0 ? (
         <EmptyState title={`Nothing found for “${q}”`}>Try fewer or different words.</EmptyState>
       ) : (
-        <div className="mt-12 grid gap-x-16 gap-y-14 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="mt-12 grid grid-cols-[minmax(0,1fr)] gap-x-16 gap-y-14 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="space-y-14">
             {results.stories.length > 0 && (
               <section>
