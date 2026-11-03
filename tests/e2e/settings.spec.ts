@@ -6,7 +6,7 @@ const shot = (name: string, project: string) => `test-results/screens/${project}
 
 test("settings pages render", async ({ page }, info) => {
   await page.goto(`${N}/settings`);
-  await expect(page.getByLabel("Name")).toHaveValue("E2E desk");
+  await expect(page.getByLabel("Name")).toHaveValue("Global Intelligence");
   await page.screenshot({ path: shot("settings", info.project.name), fullPage: true });
 
   await page.goto(`${N}/settings/source`);

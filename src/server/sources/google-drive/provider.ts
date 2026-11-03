@@ -35,7 +35,7 @@ export function createGoogleDriveProvider(
     const status = httpStatus(error);
     if (status === 404)
       return new SourceError(
-        `${what} not found, or not shared with the service account.`,
+        `${what} was not found, or is not shared with the service account.`,
         "not_found",
         { cause: error },
       );

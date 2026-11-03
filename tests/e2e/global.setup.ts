@@ -30,8 +30,8 @@ setup("prepare test user, newsroom and session", async ({ page }) => {
   const sql = neon(process.env.DATABASE_URL!);
   const [newsroom] = await sql`
     insert into newsrooms (owner_id, name, slug, description, timezone)
-    values (${user.id}, 'E2E desk', ${E2E_NEWSROOM}, 'End-to-end test newsroom', 'Europe/Athens')
-    on conflict (owner_id, slug) do update set name = excluded.name
+    values (${user.id}, 'Global Intelligence', ${E2E_NEWSROOM}, 'Daily briefing on markets, technology and world events.', 'Europe/Athens')
+    on conflict (owner_id, slug) do update set name = excluded.name, description = excluded.description
     returning id`;
   const topicCount =
     await sql`select count(*)::int as n from topics where newsroom_id = ${newsroom!.id}`;

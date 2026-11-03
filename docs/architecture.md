@@ -1,6 +1,7 @@
 # Scope: Architecture and Implementation Plan
 
-Status: **Approved 2026-11-03.** Decisions: service account for Drive; same-day editions shown grouped by day with the latest featured; git commit per milestone; dev-only local folder source included.
+Status: **Approved and implemented, 2026-11-03.** Section 15 lists where implementation refined the plan.
+Decisions taken at approval: service account for Drive; same-day editions grouped by day with the latest featured; a commit per milestone; a dev-only local folder source.
 Date of research: 2026-11-03. Version numbers and platform limits are "as of" that date.
 
 Scope is a personal intelligence newsroom. An external Claude automation writes a Markdown dossier to Google Drive every weekday. Scope imports those files (read-only), normalizes them into Neon PostgreSQL, and presents them as an editorial reading experience behind Clerk authentication.
@@ -635,3 +636,22 @@ Each milestone is one or a few commits and ends with a verification step.
 4. A Vercel account for the deployment check in M11 (optional until then).
 
 Out of scope for v1, by design: AI summarization, notifications, multi-member newsrooms, Google Docs-format reports, Workload Identity Federation code, the Drive Changes API.
+
+---
+
+## 15. Implementation notes (refinements made while building)
+
+| Area | Plan | As built | Why |
+|---|---|---|---|
+| Rendering model | Next.js defaults | `cacheComponents: false` | Next 16.4 enables Cache Components by default. Every Scope page is per-user and authenticated, so a prerendered shell gains little and every session read would need its own Suspense boundary. Dynamic rendering keeps the auth model simple. |
+| `proxy.ts` | `clerkMiddleware` + `createRouteMatcher` + `auth.protect()` | `clerkMiddleware()` only | Clerk 7 deprecates route matching in favour of checks inside each page, action and route, which Scope already does. Path matching can drift from Next's routing; resource-level checks cannot. |
+| UI primitives | shadcn/ui | Base UI primitives in the shadcn pattern (`components.json` kept) | Base UI's `data-starting-style`/`data-ending-style` support CSS-transition enter/exit (interruptible, per the Emil Kowalski skill) without `tw-animate-css`. Generated extras (`cn` package, runtime `shadcn` CSS, Geist) were removed in favour of the planned tokens. |
+| Heading anchors | Shared slugger | One function, `core/parser/anchors.ts`, run on the same mdast by parser and renderer | Guarantees table-of-contents and story links always resolve; covered by a test. |
+| Masthead | Render full report | Renderer hides the leading H1, the metadata block and a following rule | The page header already shows them; the original stays downloadable. |
+| `report_topics` | From stories and topic sections | From stories and frontmatter only | The automation writes a section for every category every day, including "nothing noteworthy", which would tag every report with every topic. Sections stay linked via `report_sections.topic_id`. |
+| `reports.source_links` | Not planned | Added (migration 0001) | The reading view's source list, with readable titles for bare URLs. |
+| Topic edits | Re-process | Re-process after the response (`after()`) | Keeps the editor responsive on large archives. |
+| Tests | PGlite + Playwright | As planned; Playwright signs in with a Clerk sign-in ticket for a dedicated test user | Avoids depending on which sign-in methods an instance enables. |
+| Region | Default | `vercel.json` `regions: ["fra1"]` | The Neon database is in `eu-central-1`. |
+
+Bugs found and fixed during verification: correlated subqueries in select lists bound to the inner table (Drizzle renders `${table.column}` unqualified there; outer references now use `${table}.column`); Lightning CSS collapsed `backdrop-filter` + `-webkit-backdrop-filter` into the prefixed form only (standard property now written alone); a client-module function called from a server component.

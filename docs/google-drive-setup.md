@@ -80,7 +80,7 @@ You paste either the full URL or the ID into Scope during onboarding (or later i
 
 | Symptom | Cause and fix |
 |---|---|
-| "Folder not found or not shared" | The folder is not shared with the service-account email, or the ID is wrong. Re-check step 5 and the URL. |
+| "The folder was not found, or is not shared with the service account" | The folder is not shared with the service-account email, or the ID is wrong. Re-check step 5 and the URL. |
 | "Google Drive API has not been used in project ... or it is disabled" | Step 2 was done in a different project. Enable the API in the project that owns the service account. |
 | `invalid_grant` / `Invalid JWT Signature` | The key was deleted or rotated in Google Cloud. Create a new key (step 4) and update the variable. |
 | Files found: 0 | Reports must be `.md` files (MIME type `text/markdown` or a `.md` name) somewhere below the shared folder. |
