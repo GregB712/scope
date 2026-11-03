@@ -26,7 +26,10 @@ export function TopBar({ newsroom }: { newsroom: AuthorizedNewsroom }) {
           <Suspense fallback={null}>
             <SyncStatus newsroom={newsroom} className="hidden sm:inline" />
           </Suspense>
-          <UserButton />
+          {/* Reserve the avatar's space so the bar does not shift when Clerk loads. */}
+          <div className="grid size-7 place-items-center">
+            <UserButton />
+          </div>
         </div>
       </div>
     </header>
