@@ -1,4 +1,7 @@
+import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+
+if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 /**
  * End-to-end smoke tests against a local dev server, signed in as a dedicated

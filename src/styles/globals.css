@@ -383,3 +383,11 @@
     border-bottom: 1px solid var(--ink);
   }
 }
+
+/* Label crossfade for buttons whose text changes state (emil-design-eng: blur bridges two states). */
+@keyframes label-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}

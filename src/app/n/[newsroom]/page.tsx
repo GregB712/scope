@@ -48,7 +48,7 @@ export default async function TodayPage({ params }: PageProps<"/n/[newsroom]">) 
       <EmptyState
         title="Connect your briefings"
         action={
-          <Link href={`${base}/settings/source`} className={buttonVariants({ variant: "primary" })}>
+          <Link href={`${base}/welcome`} className={buttonVariants({ variant: "primary" })}>
             Connect Google Drive
           </Link>
         }
