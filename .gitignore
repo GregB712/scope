@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+next-env.d.ts
+
+# production
+build/
+dist/
+
+# testing
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# env files and local credentials (never commit)
+.env
+.env.*
+!.env.example
+neon_postgres
+clerk_credentials
+*service-account*.json
+*.pem
+
+# vercel
+.vercel/
+
+# misc
+.DS_Store
+*.tsbuildinfo
+npm-debug.log*
