@@ -22,9 +22,11 @@
     "db:studio": "drizzle-kit studio",
     "sync": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/sync.ts",
     "reprocess": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/reprocess.ts",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run format:check"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run format:check",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
     "@clerk/nextjs": "^7.9.23",
     "@googleapis/drive": "^27.0.0",
     "@neondatabase/serverless": "^1.2.0",
@@ -50,12 +52,17 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@clerk/backend": "^3.26.5",
+    "@clerk/testing": "^2.2.53",
     "@electric-sql/pglite": "^0.5.14",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4.3.4",
+    "@types/hast": "^3.0.5",
     "@types/mdast": "^4.0.4",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/unist": "^3.0.3",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.4",

@@ -1,7 +1,6 @@
 import type { Heading, RootContent } from "mdast";
-import { visit } from "unist-util-visit";
-import { createHeadingSlugger } from "../slug";
 import { createTopicMatcher, type TopicRef } from "../topics/match";
+import { headingAnchors } from "./anchors";
 import { carriersOf, extractPairs } from "./labels";
 import {
   headingText,
@@ -54,12 +53,8 @@ export function parseReport(raw: string, context: ParseContext): ParsedReport {
   const frontmatter = first?.type === "yaml" ? readFrontmatter(first.value, warnings) : {};
   const body = tree.children.filter((node) => node.type !== "yaml");
 
-  // Heading anchors, assigned in document order exactly as the renderer will.
-  const slugOf = new Map<Heading, string>();
-  const slug = createHeadingSlugger();
-  visit(tree, "heading", (node: Heading) => {
-    slugOf.set(node, slug(headingText(node)));
-  });
+  // Heading anchors, computed exactly as the renderer computes heading ids.
+  const slugOf = headingAnchors(tree);
 
   // Title heading: a leading H1.
   const firstHeadingIndex = body.findIndex((node) => node.type === "heading");

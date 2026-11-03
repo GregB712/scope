@@ -32,3 +32,6 @@ clerk_credentials
 .DS_Store
 *.tsbuildinfo
 npm-debug.log*
+
+# playwright session state
+playwright/.auth/

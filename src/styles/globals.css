@@ -1,1 +1,385 @@
 @import "tailwindcss";
+
+/*
+ * Scope design tokens. Rationale: docs/architecture.md, section 9.
+ * One accent ("signal"), system UI type, a serif reading voice, hairline
+ * separators instead of boxes, motion only where it explains something.
+ */
+
+:root {
+  --canvas: #ffffff;
+  --surface: #f5f5f7;
+  --ink: #1d1d1f;
+  --ink-secondary: #6e6e73;
+  --ink-tertiary: #86868b;
+  --separator: rgb(0 0 0 / 0.08);
+  --separator-strong: rgb(0 0 0 / 0.14);
+  --signal: #2f5bea;
+  --signal-ink: #ffffff;
+  --signal-wash: rgb(47 91 234 / 0.1);
+  --warning: #9a5b00;
+  --danger: #c4291c;
+  --material: rgb(255 255 255 / 0.72);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #000000;
+    --surface: #1c1c1e;
+    --ink: #f5f5f7;
+    --ink-secondary: #a1a1a6;
+    --ink-tertiary: #86868b;
+    --separator: rgb(255 255 255 / 0.12);
+    --separator-strong: rgb(255 255 255 / 0.2);
+    --signal: #7c9bff;
+    --signal-ink: #000000;
+    --signal-wash: rgb(124 155 255 / 0.16);
+    --warning: #f0b45c;
+    --danger: #ff6b5e;
+    --material: rgb(0 0 0 / 0.68);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  /* Color */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-tertiary: var(--ink-tertiary);
+  --color-separator: var(--separator);
+  --color-separator-strong: var(--separator-strong);
+  --color-signal: var(--signal);
+  --color-signal-ink: var(--signal-ink);
+  --color-signal-wash: var(--signal-wash);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  /* shadcn semantic names, mapped onto Scope's tokens */
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-primary: var(--signal);
+  --color-primary-foreground: var(--signal-ink);
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--ink-secondary);
+  --color-border: var(--separator);
+  --color-input: var(--separator-strong);
+  --color-ring: var(--signal);
+  --color-popover: var(--canvas);
+  --color-popover-foreground: var(--ink);
+  --color-destructive: var(--danger);
+
+  /* Type families */
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --font-serif: ui-serif, var(--font-source-serif), Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Type scale: size, leading and tracking move together (Apple: size-specific tracking) */
+  --text-display: clamp(2rem, 1.4rem + 2.4vw, 3rem);
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.022em;
+  --text-headline: 1.375rem;
+  --text-headline--line-height: 1.25;
+  --text-headline--letter-spacing: -0.012em;
+  --text-title: 1.0625rem;
+  --text-title--line-height: 1.35;
+  --text-title--letter-spacing: -0.008em;
+  --text-reading: 1.1875rem;
+  --text-reading--line-height: 1.65;
+  --text-reading--letter-spacing: 0;
+  --text-ui: 0.9375rem;
+  --text-ui--line-height: 1.47;
+  --text-ui--letter-spacing: -0.005em;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.38;
+  --text-meta--letter-spacing: 0.004em;
+
+  /* Shape and motion */
+  --radius-control: 8px;
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ui text-ink antialiased;
+    font-feature-settings: "kern";
+  }
+
+  ::selection {
+    background: var(--signal-wash);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  time,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  mark {
+    background: var(--signal-wash);
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+}
+
+@layer components {
+  /* Translucent chrome: content scrolls underneath (apple-design: materials). */
+  .material-bar {
+    background: var(--material);
+    /* Standard property only: the CSS optimizer adds -webkit- for Safari. Writing both
+       made it keep just the prefixed one, which Chromium ignores. */
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* Scroll edge effect instead of a hard divider. Invisible over the plain canvas. */
+  .material-bar::after {
+    content: "";
+    position: absolute;
+    inset: 100% 0 auto;
+    height: 12px;
+    background: linear-gradient(var(--material), transparent);
+    pointer-events: none;
+  }
+
+  /* Hairline list separators between rows, never around them. */
+  .hairline-list > * + * {
+    border-top: 1px solid var(--separator);
+  }
+
+  /* Press feedback for anything tappable (emil-design-eng: buttons must feel responsive). */
+  .pressable {
+    transition: transform 160ms var(--ease-out-strong);
+  }
+  .pressable:active {
+    transform: scale(0.97);
+  }
+
+  /* Reading progress: CSS scroll-driven animation, no JavaScript. Absent where unsupported. */
+  .reading-progress {
+    display: none;
+  }
+  @supports (animation-timeline: scroll()) {
+    .reading-progress {
+      display: block;
+      transform-origin: 0 50%;
+      transform: scaleX(0);
+      animation: reading-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+@keyframes reading-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Report typography: the original Markdown, set for long-form reading. */
+@layer components {
+  .prose-report {
+    @apply font-serif text-reading text-ink;
+    font-optical-sizing: auto;
+    hanging-punctuation: first;
+  }
+  .prose-report > * + * {
+    margin-top: 1.1em;
+  }
+  .prose-report :where(h2, h3, h4, h5, h6) {
+    @apply font-sans text-ink;
+    scroll-margin-top: 5.5rem;
+    text-wrap: balance;
+  }
+  .prose-report :where(h2) {
+    @apply text-headline font-semibold;
+    margin-top: 2.4em;
+  }
+  /* Briefings use h3 for their main sections. */
+  .prose-report :where(h3) {
+    @apply text-headline font-semibold;
+    margin-top: 2.6em;
+    padding-top: 1.4em;
+    border-top: 1px solid var(--separator);
+  }
+  .prose-report :where(h4) {
+    @apply font-serif text-[1.3125rem] leading-snug font-semibold tracking-[-0.01em];
+    margin-top: 2em;
+  }
+  .prose-report :where(h5, h6) {
+    @apply text-title font-semibold;
+    margin-top: 1.6em;
+  }
+  .prose-report :where(h2, h3, h4, h5, h6) + * {
+    margin-top: 0.6em;
+  }
+  .prose-report > :first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+  .prose-report :where(p, li) {
+    text-wrap: pretty;
+  }
+  .prose-report :where(a) {
+    color: var(--signal);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+    text-decoration-color: color-mix(in srgb, var(--signal) 35%, transparent);
+    overflow-wrap: anywhere;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .prose-report :where(a:hover) {
+      text-decoration-color: currentColor;
+    }
+  }
+  .prose-report :where(strong) {
+    font-weight: 600;
+  }
+  .prose-report :where(ul, ol) {
+    padding-left: 1.25em;
+  }
+  .prose-report :where(ul) {
+    list-style: disc;
+  }
+  .prose-report :where(ol) {
+    list-style: decimal;
+  }
+  .prose-report :where(li) + :where(li) {
+    margin-top: 0.45em;
+  }
+  .prose-report :where(li)::marker {
+    color: var(--ink-tertiary);
+  }
+  .prose-report :where(blockquote) {
+    @apply font-sans text-ui text-ink-secondary;
+    padding-left: 1em;
+    border-left: 2px solid var(--separator-strong);
+  }
+  .prose-report :where(hr) {
+    display: none; /* Section headings already separate the report. */
+  }
+  .prose-report :where(code) {
+    @apply font-mono text-[0.85em];
+    background: var(--surface);
+    padding: 0.1em 0.35em;
+    border-radius: 5px;
+  }
+  .prose-report :where(pre) {
+    @apply font-mono text-meta;
+    background: var(--surface);
+    padding: 1em 1.2em;
+    border-radius: var(--radius-control);
+    overflow-x: auto;
+  }
+  .prose-report :where(pre code) {
+    background: none;
+    padding: 0;
+  }
+
+  /* Label lists ("- **Category:** ...") become aligned label/value rows. */
+  .prose-report ul.labeled-list {
+    list-style: none;
+    padding-left: 0;
+    @apply font-sans text-ui;
+  }
+  .prose-report ul.labeled-list > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.15em;
+    padding: 0.55em 0;
+  }
+  .prose-report ul.labeled-list > li + li {
+    margin-top: 0;
+    border-top: 1px solid var(--separator);
+  }
+  .prose-report ul.labeled-list > li > .label {
+    @apply text-meta font-medium text-ink-secondary;
+  }
+  @media (min-width: 640px) {
+    .prose-report ul.labeled-list > li {
+      grid-template-columns: 10.5rem minmax(0, 1fr);
+      gap: 1.25rem;
+    }
+  }
+
+  /* Tables: horizontal scroll inside a wrapper, tabular figures. */
+  .prose-report .table-scroll {
+    overflow-x: auto;
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
+  }
+  .prose-report table {
+    @apply font-sans text-meta;
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  .prose-report :where(th) {
+    @apply font-medium text-ink-secondary;
+    text-align: left;
+    border-bottom: 1px solid var(--separator-strong);
+  }
+  .prose-report :where(th, td) {
+    padding: 0.55em 0.9em 0.55em 0;
+    vertical-align: top;
+  }
+  .prose-report :where(td) {
+    border-bottom: 1px solid var(--separator);
+  }
+}
+
+/* Accessibility preferences (apple-design section 14). */
+@media (prefers-reduced-motion: reduce) {
+  .pressable,
+  .pressable:active {
+    transition: none;
+    transform: none;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .material-bar {
+    background: var(--canvas);
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --separator: rgb(0 0 0 / 0.3);
+    --ink-secondary: #3a3a3c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --separator: rgb(255 255 255 / 0.35);
+      --ink-secondary: #d1d1d6;
+    }
+  }
+  .material-bar {
+    background: var(--canvas);
+    border-bottom: 1px solid var(--ink);
+  }
+}

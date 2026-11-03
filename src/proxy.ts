@@ -1,20 +1,12 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
 /**
- * First line of defence only: every page, action and route handler re-checks
- * the session and newsroom ownership on the server (src/server/auth).
+ * Makes the Clerk session available to the app. Authorization is deliberately
+ * not done here: every page, layout, route handler and Server Action checks the
+ * session and newsroom ownership itself (src/server/auth), as Clerk recommends,
+ * so a routing mismatch can never expose protected data.
  */
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  // Authenticated with CRON_SECRET instead of a session.
-  "/api/cron(.*)",
-]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) await auth.protect();
-});
+export default clerkMiddleware();
 
 export const config = {
   matcher: [
