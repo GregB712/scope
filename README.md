@@ -107,7 +107,15 @@ cp .env.example .env.local
 2. Open **Connect** and copy two connection strings:
    - the **pooled** one (host contains `-pooler`) into `DATABASE_URL`;
    - the **direct** one into `DATABASE_URL_UNPOOLED` (used for migrations).
-3. Optional but recommended: create a `dev` branch and use its strings locally, so development never touches production data.
+3. Recommended: keep development data out of production. Local development and the e2e tests (which create a test user, newsroom and source) read `.env.local`, so point it at a separate database. Either:
+   - create a `dev` branch in the Neon console and use its connection strings locally; or
+   - create a second database on the same branch, with no extra compute, then change only the database name (the path after the host) in both local strings:
+
+     ```bash
+     psql "<direct URL>" -c "create database scope_dev"
+     ```
+
+   Run `npm run db:migrate` once against each database. Production keeps the original strings, which you set in Vercel.
 
 Only Postgres is needed. Scope stores text only and does not use object storage.
 
