@@ -56,13 +56,22 @@ export function createTopicMatcher(topics: readonly TopicRef[]) {
     matchCategory(raw: string): { topicIds: string[]; unmatched: string[] } {
       const topicIds: string[] = [];
       const unmatched: string[] = [];
+      const add = (id: string) => {
+        if (!topicIds.includes(id)) topicIds.push(id);
+      };
       for (const part of splitCategory(raw)) {
         const id = matchPhrase(part);
         if (id) {
-          if (!topicIds.includes(id)) topicIds.push(id);
-        } else {
-          unmatched.push(part);
+          add(id);
+          continue;
         }
+        // "World events & geopolitics": try each half, as topic names are matched.
+        const halves = part
+          .split(/\s+(?:&|and)\s+/i)
+          .map(matchPhrase)
+          .filter((x): x is string => x !== null);
+        if (halves.length) halves.forEach(add);
+        else unmatched.push(part);
       }
       return { topicIds, unmatched };
     },

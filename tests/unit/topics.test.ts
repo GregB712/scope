@@ -50,3 +50,21 @@ describe("topic matching", () => {
     expect(football.matchCategory("EPL / La Liga").topicIds).toEqual(["pl", "ll"]);
   });
 });
+
+describe("topic matching: reworded categories", () => {
+  it("matches a category through either half of an 'X & Y' phrase", () => {
+    expect(matcher.matchCategory("World events & geopolitics").topicIds).toEqual([
+      topicId("Global Events & Geopolitics"),
+    ]);
+    expect(matcher.matchCategory("Natural disasters & environment").topicIds).toEqual([
+      topicId("Natural Disasters & Environmental Events"),
+    ]);
+    expect(matcher.matchCategory("Medicine & life sciences").topicIds).toEqual([
+      topicId("Biomedical & Life Sciences"),
+    ]);
+    expect(matcher.matchCategory("Sport & leisure")).toEqual({
+      topicIds: [],
+      unmatched: ["Sport & leisure"],
+    });
+  });
+});

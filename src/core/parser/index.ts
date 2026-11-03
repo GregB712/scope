@@ -21,7 +21,7 @@ export type { ParsedReport, ParsedSection, ParsedStory } from "./types";
  * Bump when parsing output changes. Reports stored with an older version are
  * re-parsed from their stored Markdown on the next sync, without downloading.
  */
-export const PARSER_VERSION = 1;
+export const PARSER_VERSION = 2;
 
 export type ParseContext = {
   fileName: string;

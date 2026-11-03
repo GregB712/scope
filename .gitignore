@@ -35,3 +35,6 @@ npm-debug.log*
 
 # playwright session state
 playwright/.auth/
+
+# Google Cloud key files (default name: <project-id>-<12 hex>.json)
+*-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json

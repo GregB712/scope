@@ -265,3 +265,31 @@ describe("parseImportance", () => {
     expect(parseImportance(text)?.value ?? null).toBe(expected);
   });
 });
+
+describe("parseReport: plain-language edition (2026-11-02 10:34 style)", () => {
+  const report = parseReport(
+    readFixture("variant-plain-language.md"),
+    context("2026-11-02_1034_Global_Intelligence_Briefing.md"),
+  );
+
+  it("reads plain-language labels, including a mid-line importance", () => {
+    expect(report.stories.map((s) => [s.categoryRaw, s.importance])).toEqual([
+      ["Stock market & global finance", 9],
+      ["AI / finance", 8],
+    ]);
+    expect(report.stories[0]?.eventDate).toBe("2026-10-30");
+    expect(report.stories[0]?.extraFields["The details, in plain terms"]).toMatch(/^Intel said/);
+    expect(report.unmatchedCategories).toEqual([]);
+  });
+
+  it("understands a time zone written as a city's local time", () => {
+    expect(report.timezone).toBe("Europe/Athens");
+    expect(report.generatedAt?.toISOString()).toBe("2026-11-02T08:34:00.000Z");
+    expect(warningCodes(report)).not.toContain("timezone_assumed");
+  });
+
+  it("reads a research window written without years", () => {
+    expect(report.researchWindow?.start?.toISOString()).toBe("2026-10-30T08:00:00.000Z");
+    expect(report.researchWindow?.end?.toISOString()).toBe("2026-11-02T08:34:00.000Z");
+  });
+});

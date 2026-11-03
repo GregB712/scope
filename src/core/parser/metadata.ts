@@ -53,14 +53,38 @@ export function readMetadataBlock(pairs: readonly LabelPair[]): MetadataBlock {
 
 const TIME = /\b(\d{1,2}):(\d{2})\b/;
 
-/** A time zone named in text: "(Europe/Athens)", "Europe/Athens", "UTC" or "GMT". */
+let zonesByCity: Map<string, string> | undefined;
+
+/** "Athens" or "New York" to its IANA zone, using the runtime's own zone list. */
+export function zoneForCity(city: string): string | null {
+  zonesByCity ??= new Map(
+    Intl.supportedValuesOf("timeZone").map((zone) => [
+      zone.split("/").pop()!.replace(/_/g, " ").toLowerCase(),
+      zone,
+    ]),
+  );
+  return zonesByCity.get(city.trim().toLowerCase()) ?? null;
+}
+
+/**
+ * A time zone named in text: "(Europe/Athens)", "Europe/Athens", "UTC", "GMT",
+ * or a city's local time such as "(Athens time)".
+ */
 export function findTimeZone(text: string): string | null {
+  const parenthesized = Array.from(text.matchAll(/\(([^)]+)\)/g), (m) => m[1]!.trim());
   const candidates = [
-    ...Array.from(text.matchAll(/\(([^)]+)\)/g), (m) => m[1]!.trim()),
+    ...parenthesized,
     ...Array.from(text.matchAll(/\b([A-Z][A-Za-z_]+(?:\/[A-Za-z_+-]+)+)\b/g), (m) => m[1]!),
     ...Array.from(text.matchAll(/\b(UTC|GMT)\b/g), (m) => m[1]!),
   ];
-  return candidates.find((c) => /\/|^UTC$|^GMT$/.test(c) && isValidTimeZone(c)) ?? null;
+  const explicit = candidates.find((c) => /\/|^UTC$|^GMT$/.test(c) && isValidTimeZone(c));
+  if (explicit) return explicit;
+  for (const value of parenthesized) {
+    const city = /^([A-Za-z .'-]+?)(?:\s+(?:local\s+)?time)?$/i.exec(value)?.[1];
+    const zone = city ? zoneForCity(city) : null;
+    if (zone) return zone;
+  }
+  return null;
 }
 
 /** File names produced by the automation: `YYYY-MM-DD_HHMM_Title.md`. */
@@ -162,7 +186,7 @@ export function resolveDates(input: DateInputs, warnings: ParseWarning[]): Resol
   }
 
   const researchWindow = block.researchWindow
-    ? { ...parseWindow(block.researchWindow, zone), text: block.researchWindow }
+    ? { ...parseWindow(block.researchWindow, zone, reportDate), text: block.researchWindow }
     : null;
 
   return { reportDate, generatedAt, timezone: statedZone ?? null, researchWindow };
@@ -173,14 +197,46 @@ const WINDOW = new RegExp(
   String.raw`(\d{4}-\d{2}-\d{2})(?:[ T,]+(\d{1,2}:\d{2}))?\s*(?:\s[–—-]\s|[–—]|\sto\s|\suntil\s)\s*${ENDPOINT}`,
 );
 
-/** "2026-11-01 00:00 – 2026-11-03 08:16 (Europe/Athens)" into UTC start and end. */
-export function parseWindow(text: string, zone: string): { start: Date | null; end: Date | null } {
+/**
+ * "2026-11-01 00:00 – 2026-11-03 08:16 (Europe/Athens)" into UTC start and end.
+ * Also accepts endpoints without a year ("30 October 10:00 – 2 November 10:34"),
+ * taking the year from `referenceDate`.
+ */
+export function parseWindow(
+  text: string,
+  zone: string,
+  referenceDate?: string,
+): { start: Date | null; end: Date | null } {
   const match = WINDOW.exec(text);
-  if (!match) return { start: null, end: null };
+  if (!match)
+    return referenceDate
+      ? parseYearlessWindow(text, zone, referenceDate)
+      : { start: null, end: null };
   const [, startDate, startTime, endDateRaw, endTime] = match;
   const endDate = endDateRaw ?? (endTime ? startDate : undefined);
   return {
     start: wallTimeToUtc(startDate!, startTime ?? "00:00", zone),
     end: endDate ? wallTimeToUtc(endDate, endTime ?? "23:59", zone) : null,
   };
+}
+
+const DAY_MONTH = /\b(\d{1,2})\s+([A-Za-z]{3,9})\b/;
+
+function parseYearlessWindow(text: string, zone: string, referenceDate: string) {
+  const [left, rest] = text.split(/\s[–—-]\s|\s?[–—]\s?|\sto\s/, 2);
+  const right = rest?.split(/[;(]/)[0];
+  if (!left || !right) return { start: null, end: null };
+  const year = Number(referenceDate.slice(0, 4));
+  const endpoint = (side: string, y: number) => {
+    const dm = DAY_MONTH.exec(side);
+    const date = dm ? findDate(`${dm[1]} ${dm[2]} ${y}`) : null;
+    return { date, time: TIME.exec(side) };
+  };
+  const end = endpoint(right, year);
+  let start = endpoint(left, year);
+  // A window that crosses New Year: the start belongs to the previous year.
+  if (start.date && end.date && start.date > end.date) start = endpoint(left, year - 1);
+  const at = (p: { date: string | null; time: RegExpExecArray | null }, fallback: string) =>
+    p.date ? wallTimeToUtc(p.date, p.time ? `${p.time[1]}:${p.time[2]}` : fallback, zone) : null;
+  return { start: at(start, "00:00"), end: at(end, "23:59") };
 }

@@ -187,6 +187,12 @@ Any of these runs the same idempotent synchronization:
 
 Each run is listed under **Settings > Sync history** with counts and per-file errors. Running it twice imports nothing the second time.
 
+To check Drive access without touching the database (lists the folder, downloads and parses every file, prints what was recognized):
+
+```bash
+npx tsx --conditions=react-server --env-file=.env.local scripts/dev/drive-check.ts "<folder link or ID>"
+```
+
 ## Scheduled synchronization
 
 `vercel.json` schedules `/api/cron/sync` on weekdays:
@@ -244,7 +250,7 @@ Reports that follow none of this still import and render in full; they simply ha
 
 ## Customize topics and report formats
 
-- **Topics** live in the database, per newsroom: **Settings > Topics**. A story joins a topic when its category matches the topic's name, an alias, or one half of an "X & Y" name, so `Stock Market & Global Finance / Geopolitics` counts for both topics. **Unmapped categories** lists what your reports use that matches nothing yet, with one-click "Add as topic" or "Add as alias". Changes re-link stored reports automatically.
+- **Topics** live in the database, per newsroom: **Settings > Topics**. A story joins a topic when its category (or one half of an "X & Y" category) matches the topic's name, an alias, or one half of an "X & Y" name, so `Stock Market & Global Finance / Geopolitics` counts for both topics. **Unmapped categories** lists what your reports use that matches nothing yet, with one-click "Add as topic" or "Add as alias". Changes re-link stored reports automatically.
 - **Suggested topics** for new newsrooms are in [`src/core/topics/defaults.ts`](src/core/topics/defaults.ts). Nothing else depends on them.
 - **Parsing rules** are in [`src/core/parser`](src/core/parser): label vocabulary in `labels.ts`, section kinds in `sections.ts`. After changing the parser, bump `PARSER_VERSION` in `src/core/parser/index.ts`; the next sync re-parses stored reports without downloading them (or run `npm run reprocess`, or **Settings > Re-process all briefings**).
 
