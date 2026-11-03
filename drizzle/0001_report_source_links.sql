@@ -1,0 +1,1 @@
+ALTER TABLE "reports" ADD COLUMN "source_links" jsonb DEFAULT '[]'::jsonb NOT NULL;

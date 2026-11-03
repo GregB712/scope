@@ -171,6 +171,8 @@ export const reports = pgTable(
     researchWindowEnd: timestamp("research_window_end", { withTimezone: true }),
     researchWindowText: text("research_window_text"),
     summary: text("summary"),
+    /** The report's source list (its Sources section, or every external link). */
+    sourceLinks: jsonb("source_links").$type<SourceLink[]>().notNull().default([]),
 
     // Content
     rawMarkdown: text("raw_markdown").notNull(),

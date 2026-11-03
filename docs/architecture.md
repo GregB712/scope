@@ -223,6 +223,7 @@ No credentials are stored in the database. The only secret is the service-accoun
 | research_window_start, research_window_end | timestamptz null | Parsed when recognizable |
 | research_window_text | text null | Raw text, always kept |
 | summary | text null | Executive-summary bullets as Markdown (for cards and dashboard) |
+| source_links | jsonb | `[{url, title}]` from the Sources section (bare URLs titled by their preceding text), or every external link when there is no Sources section |
 | raw_markdown | text not null | **Original content, byte-for-byte (after UTF-8 decode)** |
 | plain_text | text not null | Markdown stripped, for search |
 | content_hash | text not null | SHA-256 of the raw bytes |
@@ -264,7 +265,7 @@ Indexes: `(report_id, position)`, `(importance)`, GIN on `search_vector`. Storie
 `unique(newsroom_id, slug)`. Seeded from the user's choices at onboarding (defaults = the 8 categories in the sample, plus aliases such as `AI`, `Finance`, `Geopolitics`, `ML`). Nothing about topics lives in code except that default list in a seed file.
 
 **story_topics** `(story_id, topic_id)` PK; **report_topics** `(report_id, topic_id)` PK with `story_count int`.
-`report_topics` is a derived index maintained by the ingestion transaction (from story categories and topic sections). It exists so archive filtering by topic is a single indexed join rather than a two-level aggregation. Re-derivable at any time from stored data.
+`report_topics` is a derived index maintained by the ingestion transaction, from story categories and frontmatter `topics`. Topic sections are deliberately excluded: the automation writes a section for every category every day, including "nothing noteworthy" ones, which would tag every report with every topic. They stay linked through `report_sections.topic_id` for topic pages. It exists so archive filtering by topic is a single indexed join rather than a two-level aggregation. Re-derivable at any time from stored data.
 
 **sync_runs**
 `id, newsroom_id, source_id, trigger enum(manual, cron, cli), triggered_by text null (Clerk user ID), status enum(running, succeeded, partial, failed, abandoned), started_at, finished_at, files_discovered, files_imported, files_updated, files_skipped, files_failed, files_missing, error_message`.
@@ -417,6 +418,7 @@ parseReport(raw, { fileName, driveCreatedAt, fallbackTimezone, topics }) → {
 7. **Links:** all external links collected with their nearest heading. The `sources`-kind section, if present, is the report's canonical source list.
 8. **Topic matching (`src/core/topics`):** split `category_raw` on `/`, `,`, `;`, `|`; normalize (lowercase, `&` → `and`, strip punctuation). A token matches a topic if it equals the topic's name, an alias, or one of the `&`/`and`-separated parts of its name (`Geopolitics` → `Global Events & Geopolitics`). Section headings are matched the same way, giving `topic_brief` sections. Unmatched tokens are kept in `category_raw` and surfaced in Settings as "Unmapped categories" with one-click "Add as topic" or "Add as alias of...". Both trigger a re-link of stored reports.
 9. **Never lose content:** parsing never throws on content; it returns whatever it recognized plus warnings. Persistence of `raw_markdown` does not depend on parse success. A file that fails structural parsing is still stored and fully readable.
+10. **Unmapped categories** are computed at query time from `stories.category_raw` against the current topics, so nothing needs to be persisted for the Settings list.
 
 `PARSER_VERSION` is a constant; bumping it makes the next sync re-parse stored reports without downloading them.
 
