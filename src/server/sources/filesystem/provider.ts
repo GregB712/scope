@@ -33,7 +33,7 @@ export function createFilesystemProvider(allowedRoot: string): SourceProvider {
 
     async verifyRoot(rootRef) {
       const root = resolveRoot(rootRef);
-      const info = await stat(root).catch(() => null);
+      const info = await stat(/* turbopackIgnore: true */ root).catch(() => null);
       if (!info) throw new SourceError("The folder does not exist.", "not_found");
       if (!info.isDirectory())
         throw new SourceError("That path is a file, not a folder.", "not_a_folder");
@@ -46,7 +46,9 @@ export function createFilesystemProvider(allowedRoot: string): SourceProvider {
       const skipped: Listing["skipped"] = [];
 
       const walk = async (dir: string, depth: number) => {
-        for (const entry of await readdir(dir, { withFileTypes: true })) {
+        for (const entry of await readdir(/* turbopackIgnore: true */ dir, {
+          withFileTypes: true,
+        })) {
           const full = join(dir, entry.name);
           const path = relative(root, full).split(sep).join("/");
           if (entry.isDirectory()) {
@@ -56,7 +58,7 @@ export function createFilesystemProvider(allowedRoot: string): SourceProvider {
             continue;
           }
           if (!entry.isFile() || !isMarkdownFile(entry.name, null)) continue;
-          const info = await stat(full);
+          const info = await stat(/* turbopackIgnore: true */ full);
           if (info.size > LIMITS.maxFileBytes) {
             skipped.push({ name: entry.name, path, reason: "file too large" });
             continue;
@@ -70,7 +72,7 @@ export function createFilesystemProvider(allowedRoot: string): SourceProvider {
             createdAt: info.birthtimeMs ? info.birthtime : info.mtime,
             modifiedAt: info.mtime,
             checksum: createHash("md5")
-              .update(await readFile(full))
+              .update(await readFile(/* turbopackIgnore: true */ full))
               .digest("hex"),
             size: info.size,
           });
@@ -86,7 +88,7 @@ export function createFilesystemProvider(allowedRoot: string): SourceProvider {
       const rel = relative(base, full);
       if (rel.startsWith("..") || isAbsolute(rel))
         throw new SourceError("Invalid file path.", "forbidden");
-      return new Uint8Array(await readFile(full));
+      return new Uint8Array(await readFile(/* turbopackIgnore: true */ full));
     },
   };
 }
