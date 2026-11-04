@@ -385,7 +385,7 @@ One transaction per file (report + all derived rows). A failure rolls back that 
 | Manual | "Sync now" Server Action in Settings | Clerk session + newsroom ownership + admin email |
 | Local | `npm run sync [-- --newsroom <slug>]` (tsx script) | Shell access to `.env.local` |
 
-Default `vercel.json` schedule: `0 7 * * 1-5` (07:00-07:59 UTC on Hobby, weekdays), which runs after an 08:00-09:00 Athens automation. Forkers change one line; the README includes a table converting common local times to UTC and the Pro-plan option of hourly `0 * * * 1-5`. Users can also disable a source in Settings without redeploying.
+Default `vercel.json` schedules: `0 6 * * *` and `0 7 * * *` (daily; each fires within its UTC hour on Hobby). Together they guarantee one run between 09:00 and 10:00 Athens time across daylight saving, after an automation that writes at about 08:15; the other run is an idempotent no-op. Forkers change the expressions; the README includes a table converting common local times to UTC and the Pro-plan option of hourly `0 * * * *`. Users can also disable a source in Settings without redeploying.
 
 ---
 

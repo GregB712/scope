@@ -215,21 +215,24 @@ npx tsx --conditions=react-server --env-file=.env.local scripts/dev/drive-check.
 
 ## Scheduled synchronization
 
-`vercel.json` schedules `/api/cron/sync` on weekdays:
+`vercel.json` schedules `/api/cron/sync` twice a day:
 
 ```json
-{ "path": "/api/cron/sync", "schedule": "0 7 * * 1-5" }
+{ "path": "/api/cron/sync", "schedule": "0 6 * * *" },
+{ "path": "/api/cron/sync", "schedule": "0 7 * * *" }
 ```
 
-- Schedules are in **UTC**. `0 7 * * 1-5` runs between 07:00 and 07:59 UTC on the Hobby plan (Vercel picks a time within the hour), which is after an automation that writes at about 08:00-09:00 Athens time.
-- **Hobby** allows schedules that run at most once a day. **Pro** allows more frequent schedules, for example hourly on weekdays: `0 * * * 1-5`.
-- Change the expression and redeploy to change the schedule. Pause a newsroom's scheduled sync without redeploying with the **Scheduled sync** switch in Settings.
+- Schedules are always in **UTC**, and on the Hobby plan each runs at some point within its hour (`0 7` means 07:00-07:59 UTC). Hobby allows up to 100 schedules per project, each at most once a day.
+- The default targets **09:00 Athens time**, about 45 minutes after an automation that writes at around 08:15. Athens is UTC+2 in winter and UTC+3 in summer, so no single UTC hour is 09:00 all year. The two schedules guarantee one run between 09:00 and 10:00 Athens time year-round; the other (08:00 in winter, 10:00 in summer) finds nothing new and skips.
+- **Pro** allows exact, more frequent schedules, for example hourly: `0 * * * *`.
+- Change the expressions and redeploy to change the schedule. Pause a newsroom's scheduled sync without redeploying with the **Scheduled sync** switch in Settings.
 
-| Automation runs at | Suggested schedule (UTC) |
+| Sync at | Schedules (UTC) |
 |---|---|
-| 08:00 Europe/Athens (UTC+2 winter) | `0 7 * * 1-5` |
-| 07:00 America/New_York (UTC-5 winter) | `0 13 * * 1-5` |
-| 08:00 Asia/Tokyo (UTC+9) | `0 0 * * 1-5` |
+| 09:00 Europe/Athens (UTC+2 / UTC+3 in summer) | `0 6 * * *` and `0 7 * * *` |
+| 09:00 Europe/London (UTC+0 / UTC+1 in summer) | `0 8 * * *` and `0 9 * * *` |
+| 09:00 America/New_York (UTC-5 / UTC-4 in summer) | `0 13 * * *` and `0 14 * * *` |
+| 09:00 Asia/Tokyo (UTC+9, no daylight saving) | `0 0 * * *` |
 
 The sync is safe against the platform's realities: Vercel may skip or occasionally duplicate a cron delivery, and runs can overlap. A per-source lease lets only one run work at a time, every run catches up on everything outstanding, and a run that hits the time budget (`SYNC_TIME_BUDGET_MS`, below the 300 s function limit) stops cleanly and the next run continues. It never assumes the automation has finished: a file that appears later, or is rewritten, is picked up on the next run.
 
