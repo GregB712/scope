@@ -6,7 +6,6 @@ import { Markdown } from "@/components/markdown/markdown";
 import { TableOfContents } from "@/components/markdown/toc";
 import { DateLabel } from "@/components/newsroom/date-label";
 import { Importance } from "@/components/newsroom/importance";
-import { Notice } from "@/components/newsroom/states";
 import { TopicList } from "@/components/newsroom/topic-badge";
 import { Sheet } from "@/components/ui/sheet";
 import { cityOf, formatDate, formatTime, plural } from "@/lib/format";
@@ -143,11 +142,6 @@ export default async function ReportPage({ params }: Props) {
           </div>
 
           <div className="mt-6 space-y-2">
-            {report.sourceMissingAt && (
-              <Notice tone="warning">
-                This file is no longer in the source folder. The imported copy is kept here.
-              </Notice>
-            )}
             {report.parseWarnings.length > 0 && (
               <details className="rounded-(--radius-control) bg-surface px-4 py-3 text-meta text-ink-secondary">
                 <summary className="cursor-pointer">

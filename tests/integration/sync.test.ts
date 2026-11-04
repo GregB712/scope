@@ -14,6 +14,11 @@ import {
 } from "@/server/db/schema";
 import type { Database } from "@/server/db/types";
 import { SourceError, type RemoteFile, type SourceProvider } from "@/server/sources/types";
+import { findNewsroom } from "@/server/data/newsroom-access";
+import { getNewsroomStats, getReport, listArchiveMonths, listReports } from "@/server/data/reports";
+import { searchNewsroom } from "@/server/data/search";
+import { listRecentStories } from "@/server/data/stories";
+import { listTopicsWithStats } from "@/server/data/topics";
 import { STALE_RUN_MS } from "@/server/sync/lease";
 import { reprocessNewsroom } from "@/server/sync/reprocess";
 import { syncSource } from "@/server/sync/run-sync";
@@ -214,20 +219,61 @@ describe("sync: changes", () => {
     expect(row).toMatchObject({ sourcePath: "archive/moved.md", sourceFileName: "moved.md" });
   });
 
-  it("flags files that disappear, keeps the report, and clears the flag when they return", async () => {
+  it("flags files that disappear, hides them from every page, and restores them when they return", async () => {
+    const newsroom = (await findNewsroom(db, "global"))!;
+    const visible = async () => {
+      const [list, stats, months, recent, topicStats, search, report] = await Promise.all([
+        listReports(db, newsroom),
+        getNewsroomStats(db, newsroom),
+        listArchiveMonths(db, newsroom),
+        listRecentStories(db, newsroom),
+        listTopicsWithStats(db, newsroom),
+        searchNewsroom(db, newsroom, "Node-RED"),
+        getReport(db, newsroom, "2026-11-03-0816-global-intelligence-briefing"),
+      ]);
+      return {
+        reports: list.total,
+        statsCount: stats.reportCount,
+        months: months.length,
+        stories: recent.total,
+        topicStories: topicStats.reduce((n, t) => n + t.storyCount, 0),
+        searchHits: search.reports.length + search.stories.length,
+        reportPage: report !== null,
+      };
+    };
+
     source.put(sample());
     await run();
+    const shown = await visible();
+    expect(shown).toMatchObject({ reports: 1, statsCount: 1, months: 1, reportPage: true });
+    expect(shown.stories).toBeGreaterThan(0);
+    expect(shown.topicStories).toBeGreaterThan(0);
+    expect(shown.searchHits).toBeGreaterThan(0);
+
     source.files.clear();
     const gone = await run();
     expect(gone).toMatchObject({ status: "succeeded", counts: { discovered: 0, missing: 1 } });
     const [flagged] = await db.select().from(reports);
     expect(flagged?.sourceMissingAt).toBeInstanceOf(Date);
+    // Kept in the database, with its original Markdown and stories...
+    expect(flagged?.rawMarkdown).toBe(readSample());
     expect(await db.select().from(stories)).toHaveLength(7);
+    // ...but shown nowhere.
+    expect(await visible()).toEqual({
+      reports: 0,
+      statsCount: 0,
+      months: 0,
+      stories: 0,
+      topicStories: 0,
+      searchHits: 0,
+      reportPage: false,
+    });
 
     source.put(sample());
     await run();
     const [back] = await db.select().from(reports);
     expect(back?.sourceMissingAt).toBeNull();
+    expect(await visible()).toEqual(shown);
   });
 });
 

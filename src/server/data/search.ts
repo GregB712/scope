@@ -2,6 +2,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { reports, stories, topics } from "@/server/db/schema";
 import type { Database } from "@/server/db/types";
 import type { AuthorizedNewsroom } from "./newsroom-access";
+import { visibleReports } from "./visibility";
 import { HIGHLIGHT, tsQuery } from "./search-syntax";
 
 /**
@@ -29,7 +30,7 @@ export async function searchNewsroom(
         rank: sql<number>`ts_rank_cd(${reports.searchVector}, ${query})`,
       })
       .from(reports)
-      .where(and(eq(reports.newsroomId, newsroom.id), sql`${reports.searchVector} @@ ${query}`))
+      .where(and(visibleReports(newsroom), sql`${reports.searchVector} @@ ${query}`))
       .orderBy(desc(sql`ts_rank_cd(${reports.searchVector}, ${query})`), desc(reports.reportDate))
       .limit(limit),
     db
@@ -43,7 +44,7 @@ export async function searchNewsroom(
       })
       .from(stories)
       .innerJoin(reports, eq(reports.id, stories.reportId))
-      .where(and(eq(reports.newsroomId, newsroom.id), sql`${stories.searchVector} @@ ${query}`))
+      .where(and(visibleReports(newsroom), sql`${stories.searchVector} @@ ${query}`))
       .orderBy(desc(sql`ts_rank_cd(${stories.searchVector}, ${query})`), desc(reports.reportDate))
       .limit(limit),
     db

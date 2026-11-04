@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from "drizzle-or
 import { reportTopics, reports, stories, storyTopics, topics } from "@/server/db/schema";
 import type { Database } from "@/server/db/types";
 import type { AuthorizedNewsroom } from "./newsroom-access";
+import { visibleReports } from "./visibility";
 import { HIGHLIGHT, tsQuery } from "./search-syntax";
 
 /** Newest first: by date, then generation time, then import order. */
@@ -26,7 +27,6 @@ export type ReportListItem = {
   generatedAt: Date | null;
   timezone: string | null;
   summary: string | null;
-  sourceMissing: boolean;
   storyCount: number;
   topImportance: number | null;
   leadStory: string | null;
@@ -81,7 +81,7 @@ export async function listReports(
   const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 20));
   const query = filters.q?.trim() ? tsQuery(filters.q) : null;
 
-  const conditions: SQL[] = [eq(reports.newsroomId, newsroom.id)];
+  const conditions: SQL[] = [visibleReports(newsroom)];
   if (query) conditions.push(sql`${reports.searchVector} @@ ${query}`);
   if (filters.from) conditions.push(gte(reports.reportDate, filters.from));
   if (filters.to) conditions.push(lte(reports.reportDate, filters.to));
@@ -105,7 +105,6 @@ export async function listReports(
       generatedAt: reports.generatedAt,
       timezone: reports.timezone,
       summary: reports.summary,
-      sourceMissingAt: reports.sourceMissingAt,
       storyCount,
       topImportance,
       leadStory,
@@ -125,9 +124,8 @@ export async function listReports(
     rows.map((r) => r.id),
   );
   return {
-    items: rows.map(({ total: _total, sourceMissingAt, ...row }) => ({
+    items: rows.map(({ total: _total, ...row }) => ({
       ...row,
-      sourceMissing: sourceMissingAt !== null,
       topics: tags.get(row.id) ?? [],
     })),
     total: rows[0]?.total ?? 0,
@@ -153,7 +151,7 @@ export async function getReport(db: Database, newsroom: AuthorizedNewsroom, slug
   const [report] = await db
     .select()
     .from(reports)
-    .where(and(eq(reports.newsroomId, newsroom.id), eq(reports.slug, slug)));
+    .where(and(visibleReports(newsroom), eq(reports.slug, slug)));
   if (!report) return null;
 
   const storyRows = await db
@@ -191,7 +189,7 @@ export async function getReport(db: Database, newsroom: AuthorizedNewsroom, slug
       .from(reports)
       .where(
         and(
-          eq(reports.newsroomId, newsroom.id),
+          visibleReports(newsroom),
           direction === "older" ? sql`${key} < ${current}` : sql`${key} > ${current}`,
         ),
       )
@@ -203,7 +201,7 @@ export async function getReport(db: Database, newsroom: AuthorizedNewsroom, slug
     db
       .select({ slug: reports.slug, generatedAt: reports.generatedAt })
       .from(reports)
-      .where(and(eq(reports.newsroomId, newsroom.id), eq(reports.reportDate, report.reportDate)))
+      .where(and(visibleReports(newsroom), eq(reports.reportDate, report.reportDate)))
       .orderBy(sql`${reports.generatedAt} asc nulls first`, asc(reports.importedAt)),
   ]);
 
@@ -243,7 +241,7 @@ export async function listArchiveMonths(db: Database, newsroom: AuthorizedNewsro
   return db
     .select({ month, count: sql<number>`count(*)::int` })
     .from(reports)
-    .where(eq(reports.newsroomId, newsroom.id))
+    .where(visibleReports(newsroom))
     .groupBy(month)
     .orderBy(desc(month));
 }
@@ -255,6 +253,6 @@ export async function getNewsroomStats(db: Database, newsroom: AuthorizedNewsroo
       latestReportDate: sql<string | null>`max(${reports.reportDate})::text`,
     })
     .from(reports)
-    .where(eq(reports.newsroomId, newsroom.id));
+    .where(visibleReports(newsroom));
   return { reportCount: row?.reportCount ?? 0, latestReportDate: row?.latestReportDate ?? null };
 }

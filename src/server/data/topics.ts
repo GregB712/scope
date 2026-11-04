@@ -11,6 +11,7 @@ import {
 } from "@/server/db/schema";
 import type { Database } from "@/server/db/types";
 import type { AuthorizedNewsroom } from "./newsroom-access";
+import { visibleReports } from "./visibility";
 
 export type TopicInput = { name: string; aliases: string[]; description?: string | null };
 
@@ -22,6 +23,7 @@ export async function listTopics(db: Database, newsroom: AuthorizedNewsroom) {
     .orderBy(asc(topics.position), asc(topics.name));
 }
 
+/** Topics with counts over visible reports only (see ./visibility). */
 export async function listTopicsWithStats(db: Database, newsroom: AuthorizedNewsroom) {
   return db
     .select({
@@ -29,11 +31,11 @@ export async function listTopicsWithStats(db: Database, newsroom: AuthorizedNews
       name: topics.name,
       slug: topics.slug,
       description: topics.description,
-      storyCount: sql<number>`(select count(*)::int from ${storyTopics} st where st.topic_id = ${topics}.id)`,
-      reportCount: sql<number>`(select count(*)::int from ${reportTopics} rt where rt.topic_id = ${topics}.id)`,
+      storyCount: sql<number>`(select count(*)::int from ${storyTopics} st join ${stories} s on s.id = st.story_id join ${reports} r on r.id = s.report_id where st.topic_id = ${topics}.id and r.source_missing_at is null)`,
+      reportCount: sql<number>`(select count(*)::int from ${reportTopics} rt join ${reports} r on r.id = rt.report_id where rt.topic_id = ${topics}.id and r.source_missing_at is null)`,
       lastActivity: sql<
         string | null
-      >`(select max(r.report_date)::text from ${reportTopics} rt join ${reports} r on r.id = rt.report_id where rt.topic_id = ${topics}.id)`,
+      >`(select max(r.report_date)::text from ${reportTopics} rt join ${reports} r on r.id = rt.report_id where rt.topic_id = ${topics}.id and r.source_missing_at is null)`,
     })
     .from(topics)
     .where(eq(topics.newsroomId, newsroom.id))
@@ -63,7 +65,7 @@ export async function getLatestTopicBrief(
     })
     .from(reportSections)
     .innerJoin(reports, eq(reports.id, reportSections.reportId))
-    .where(and(eq(reports.newsroomId, newsroom.id), eq(reportSections.topicId, topicId)))
+    .where(and(visibleReports(newsroom), eq(reportSections.topicId, topicId)))
     .orderBy(desc(reports.reportDate), sql`${reports.generatedAt} desc nulls last`)
     .limit(1);
   return row ?? null;
@@ -90,7 +92,7 @@ export async function latestStoriesByTopic(
     .from(storyTopics)
     .innerJoin(stories, eq(stories.id, storyTopics.storyId))
     .innerJoin(reports, eq(reports.id, stories.reportId))
-    .where(eq(reports.newsroomId, newsroom.id))
+    .where(visibleReports(newsroom))
     .as("ranked");
   const rows = await db
     .select()
@@ -201,7 +203,7 @@ export async function listUnmappedCategories(db: Database, newsroom: AuthorizedN
       .select({ category: stories.categoryRaw, count: sql<number>`count(*)::int` })
       .from(stories)
       .innerJoin(reports, eq(reports.id, stories.reportId))
-      .where(and(eq(reports.newsroomId, newsroom.id), sql`${stories.categoryRaw} is not null`))
+      .where(and(visibleReports(newsroom), sql`${stories.categoryRaw} is not null`))
       .groupBy(stories.categoryRaw),
   ]);
   const matcher = createTopicMatcher(topicRows);

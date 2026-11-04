@@ -2,6 +2,7 @@ import { and, desc, eq, gte, sql, type SQL } from "drizzle-orm";
 import { reports, stories, storyTopics, topics } from "@/server/db/schema";
 import type { Database } from "@/server/db/types";
 import type { AuthorizedNewsroom } from "./newsroom-access";
+import { visibleReports } from "./visibility";
 import { topicsForStories, type TopicTag } from "./reports";
 
 export type StoryListItem = {
@@ -27,7 +28,7 @@ export async function listRecentStories(
     minImportance?: number;
   } = {},
 ): Promise<{ items: StoryListItem[]; total: number }> {
-  const conditions: SQL[] = [eq(reports.newsroomId, newsroom.id)];
+  const conditions: SQL[] = [visibleReports(newsroom)];
   if (options.since) conditions.push(gte(reports.reportDate, options.since));
   if (options.minImportance) conditions.push(gte(stories.importance, options.minImportance));
   if (options.topicSlug) {

@@ -80,7 +80,6 @@ export function ReportCard({
             </span>
           )}
           <span>{plural(report.storyCount, "story", "stories")}</span>
-          {report.sourceMissing && <span className="text-warning">Removed from source</span>}
         </div>
         {report.topics.length > 0 && (
           <div className="relative z-10 mt-3">

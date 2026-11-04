@@ -234,7 +234,7 @@ npx tsx --conditions=react-server --env-file=.env.local scripts/dev/drive-check.
 | 09:00 America/New_York (UTC-5 / UTC-4 in summer) | `0 13 * * *` and `0 14 * * *` |
 | 09:00 Asia/Tokyo (UTC+9, no daylight saving) | `0 0 * * *` |
 
-The sync is safe against the platform's realities: Vercel may skip or occasionally duplicate a cron delivery, and runs can overlap. A per-source lease lets only one run work at a time, every run catches up on everything outstanding, and a run that hits the time budget (`SYNC_TIME_BUDGET_MS`, below the 300 s function limit) stops cleanly and the next run continues. It never assumes the automation has finished: a file that appears later, or is rewritten, is picked up on the next run.
+The sync is safe against the platform's realities: Vercel may skip or occasionally duplicate a cron delivery, and runs can overlap. A per-source lease lets only one run work at a time, every run catches up on everything outstanding, and a run that hits the time budget (`SYNC_TIME_BUDGET_MS`, below the 300 s function limit) stops cleanly and the next run continues. It never assumes the automation has finished: a file that appears later, or is rewritten, is picked up on the next run. A file removed from Drive disappears from Scope on the next run; its report stays in the database and reappears if the file is restored.
 
 ## Deploy on Vercel
 

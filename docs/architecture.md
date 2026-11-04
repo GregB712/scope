@@ -215,7 +215,7 @@ No credentials are stored in the database. The only secret is the service-accoun
 | source_file_name, source_mime_type | text | |
 | source_created_at, source_modified_at | timestamptz | From Drive |
 | source_checksum | text | Drive `md5Checksum` (nullable for providers without one) |
-| source_missing_at | timestamptz null | Set when the file disappears from Drive; report is kept |
+| source_missing_at | timestamptz null | Set when the file disappears from Drive; report is kept but hidden from every page |
 | slug | text | From filename; `unique(newsroom_id, slug)`; never changes after first import |
 | title | text not null | H1 → frontmatter → filename → "Untitled report" |
 | report_date | date not null | Content → filename → Drive created time (in newsroom timezone) |
@@ -653,6 +653,7 @@ Out of scope for v1, by design: AI summarization, notifications, multi-member ne
 | Topic edits | Re-process | Re-process after the response (`after()`) | Keeps the editor responsive on large archives. |
 | Tests | PGlite + Playwright | As planned; Playwright signs in with a Clerk sign-in ticket for a dedicated test user | Avoids depending on which sign-in methods an instance enables. |
 | Region | Default | `vercel.json` `regions: ["fra1"]` | The Neon database is in `eu-central-1`. |
+| Removed files | Report kept with a "no longer in the source" notice | Report kept but hidden from every page (`data/visibility.ts`); shown again if the file returns | The archive mirrors the Drive folder, while the original Markdown stays recoverable. |
 | Access model | One owner per newsroom; other users' newsrooms 404 | One publication per deployment: admins (`ADMIN_EMAILS`, verified Clerk emails) create and edit newsrooms they own; every other signed-in user reads all newsrooms. Slugs are unique deployment-wide (migration 0002). Reading pages sit in a `(read)` route group so the loading skeleton does not wrap Settings, which therefore returns a real 404 to readers. | The owner publishes their briefings to subscribers. Anyone who wants their own topics and folder deploys their own copy. |
 
 Bugs found and fixed during verification: correlated subqueries in select lists bound to the inner table (Drizzle renders `${table.column}` unqualified there; outer references now use `${table}.column`); Lightning CSS collapsed `backdrop-filter` + `-webkit-backdrop-filter` into the prefixed form only (standard property now written alone); a client-module function called from a server component.
