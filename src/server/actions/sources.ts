@@ -1,9 +1,8 @@
 "use server";
 
-import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { authorizeNewsroomAction } from "@/server/auth";
+import { authorizeNewsroomAction, verifiedEmails } from "@/server/auth";
 import { getDb, withTransactionalDb } from "@/server/db/client";
 import { bindSource, getSource, setSourceEnabled } from "@/server/data/sources";
 import { getSourceProvider, SourceError, type ProviderId } from "@/server/sources";
@@ -24,14 +23,6 @@ function rootRefFor(provider: ProviderId, folder: string): string {
   if (!id)
     throw new SourceError("That does not look like a Google Drive folder link or ID.", "invalid");
   return id;
-}
-
-/** The signed-in user's verified email addresses, lower-cased. */
-async function verifiedEmails(): Promise<string[]> {
-  const user = await currentUser();
-  return (user?.emailAddresses ?? [])
-    .filter((e) => e.verification?.status === "verified")
-    .map((e) => e.emailAddress.toLowerCase());
 }
 
 /**

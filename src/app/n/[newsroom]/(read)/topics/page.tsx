@@ -6,16 +6,18 @@ import { PageHeader } from "@/components/newsroom/page-header";
 import { EmptyState } from "@/components/newsroom/states";
 import { buttonVariants } from "@/components/ui/button";
 import { plural } from "@/lib/format";
-import { requireNewsroom } from "@/server/auth";
+import { canEditNewsroom, requireNewsroom } from "@/server/auth";
 import { getDb } from "@/server/db/client";
 import { latestStoriesByTopic, listTopicsWithStats } from "@/server/data/topics";
 
 export const metadata: Metadata = { title: "Topics" };
 
 export default async function TopicsPage({ params }: PageProps<"/n/[newsroom]/topics">) {
-  const newsroom = await requireNewsroom((await params).newsroom);
+  const { newsroom: slug } = await params;
+  const newsroom = await requireNewsroom(slug);
   const db = getDb();
-  const [topics, latest] = await Promise.all([
+  const [canEdit, topics, latest] = await Promise.all([
+    canEditNewsroom(slug),
     listTopicsWithStats(db, newsroom),
     latestStoriesByTopic(db, newsroom, 3),
   ]);
@@ -26,9 +28,14 @@ export default async function TopicsPage({ params }: PageProps<"/n/[newsroom]/to
       <EmptyState
         title="No topics yet"
         action={
-          <Link href={`${base}/settings/topics`} className={buttonVariants({ variant: "primary" })}>
-            Set up topics
-          </Link>
+          canEdit && (
+            <Link
+              href={`${base}/settings/topics`}
+              className={buttonVariants({ variant: "primary" })}
+            >
+              Set up topics
+            </Link>
+          )
         }
       >
         Topics group stories by the categories your automation writes, such as Cybersecurity or
@@ -43,9 +50,11 @@ export default async function TopicsPage({ params }: PageProps<"/n/[newsroom]/to
         title="Topics"
         description="The research areas your briefings cover, with their latest stories."
         actions={
-          <Link href={`${base}/settings/topics`} className="text-ui text-signal">
-            Edit topics
-          </Link>
+          canEdit && (
+            <Link href={`${base}/settings/topics`} className="text-ui text-signal">
+              Edit topics
+            </Link>
+          )
         }
       />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-12 sm:grid-cols-2 lg:grid-cols-3">

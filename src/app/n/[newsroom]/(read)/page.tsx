@@ -7,7 +7,7 @@ import { StoryRow } from "@/components/newsroom/story-row";
 import { buttonVariants } from "@/components/ui/button";
 import { cityOf, formatDate, formatLongDate, formatTime, plural } from "@/lib/format";
 import { summaryParts } from "@/lib/report-text";
-import { requireNewsroom } from "@/server/auth";
+import { canEditNewsroom, requireNewsroom } from "@/server/auth";
 import { getDb } from "@/server/db/client";
 import { getNewsroomStats, getReport, listReports } from "@/server/data/reports";
 import { listSources } from "@/server/data/sources";
@@ -21,9 +21,11 @@ const weekBefore = (date: string) =>
   new Date(Date.parse(`${date}T00:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
 
 export default async function TodayPage({ params }: PageProps<"/n/[newsroom]">) {
-  const newsroom = await requireNewsroom((await params).newsroom);
+  const { newsroom: slug } = await params;
+  const newsroom = await requireNewsroom(slug);
   const db = getDb();
-  const [stats, recent, sources, topics] = await Promise.all([
+  const [canEdit, stats, recent, sources, topics] = await Promise.all([
+    canEditNewsroom(slug),
     getNewsroomStats(db, newsroom),
     listReports(db, newsroom, { pageSize: 7 }),
     listSources(db, newsroom),
@@ -33,6 +35,13 @@ export default async function TodayPage({ params }: PageProps<"/n/[newsroom]">) 
 
   const [latest, ...earlier] = recent.items;
   if (!latest) {
+    if (!canEdit) {
+      return (
+        <EmptyState title="No briefings yet">
+          The first briefing will appear here as soon as it is published.
+        </EmptyState>
+      );
+    }
     return sources.length ? (
       <EmptyState
         title="No briefings yet"
@@ -207,7 +216,7 @@ export default async function TodayPage({ params }: PageProps<"/n/[newsroom]">) 
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : canEdit ? (
             <p className="py-4 text-ui text-ink-secondary">
               Stories will be grouped here once their categories match your{" "}
               <Link href={`${base}/settings/topics`} className="text-signal">
@@ -215,6 +224,8 @@ export default async function TodayPage({ params }: PageProps<"/n/[newsroom]">) 
               </Link>
               .
             </p>
+          ) : (
+            <p className="py-4 text-ui text-ink-secondary">No topics yet.</p>
           )}
         </section>
       </div>

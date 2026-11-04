@@ -3,7 +3,7 @@ import { Pagination } from "@/components/newsroom/pagination";
 import { EmptyState } from "@/components/newsroom/states";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { requireNewsroom } from "@/server/auth";
+import { requireEditableNewsroom } from "@/server/auth";
 import { getDb } from "@/server/db/client";
 import { listSyncRuns } from "@/server/data/sources";
 import { SettingsSection } from "../section";
@@ -30,7 +30,7 @@ export default async function SyncHistoryPage({
   params,
   searchParams,
 }: PageProps<"/n/[newsroom]/settings/sync">) {
-  const newsroom = await requireNewsroom((await params).newsroom);
+  const newsroom = await requireEditableNewsroom((await params).newsroom);
   const page = Math.max(1, Number((await searchParams).page) || 1);
   const runs = await listSyncRuns(getDb(), newsroom, {
     limit: PAGE_SIZE,

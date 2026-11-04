@@ -86,7 +86,7 @@ export const newsrooms = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("newsrooms_owner_slug_key").on(t.ownerId, t.slug)],
+  (t) => [uniqueIndex("newsrooms_slug_key").on(t.slug), index("newsrooms_owner_idx").on(t.ownerId)],
 );
 
 export const sources = pgTable(

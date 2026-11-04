@@ -7,8 +7,8 @@ import { navItems } from "./nav-items";
 import { SyncStatus } from "./sync-status";
 
 /** Translucent top bar; content scrolls underneath (apple-design: materials). */
-export function TopBar({ newsroom }: { newsroom: AuthorizedNewsroom }) {
-  const items = navItems(newsroom.slug);
+export function TopBar({ newsroom, canEdit }: { newsroom: AuthorizedNewsroom; canEdit: boolean }) {
+  const items = navItems(newsroom.slug, canEdit);
   return (
     <header className="material-bar sticky top-0 z-40">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-5 sm:px-8">
@@ -24,7 +24,11 @@ export function TopBar({ newsroom }: { newsroom: AuthorizedNewsroom }) {
         </div>
         <div className="flex items-center gap-4">
           <Suspense fallback={null}>
-            <SyncStatus newsroom={newsroom} className="hidden whitespace-nowrap sm:inline" />
+            <SyncStatus
+              newsroom={newsroom}
+              canEdit={canEdit}
+              className="hidden whitespace-nowrap sm:inline"
+            />
           </Suspense>
           {/* Reserve the avatar's space so the bar does not shift when Clerk loads. */}
           <div className="grid size-7 place-items-center">

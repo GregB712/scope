@@ -1,10 +1,14 @@
 import { neon } from "@neondatabase/serverless";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 const N = "/n/e2e-desk";
 const shot = (name: string, project: string) => `test-results/screens/${project}-${name}.png`;
 
 test("settings pages render", async ({ page }, info) => {
+  await page.goto(N);
+  if (info.project.name === "desktop") {
+    await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+  }
   await page.goto(`${N}/settings`);
   await expect(page.getByLabel("Name")).toHaveValue("Global Intelligence");
   await page.screenshot({ path: shot("settings", info.project.name), fullPage: true });

@@ -10,7 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { syncEnv } from "@/env";
 import { plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { requireNewsroom } from "@/server/auth";
+import { requireEditableNewsroom } from "@/server/auth";
 import { getDb } from "@/server/db/client";
 import { getNewsroomStats } from "@/server/data/reports";
 import { listSources } from "@/server/data/sources";
@@ -53,7 +53,7 @@ function Step({
 }
 
 export default async function WelcomePage({ params }: PageProps<"/n/[newsroom]/welcome">) {
-  const newsroom = await requireNewsroom((await params).newsroom);
+  const newsroom = await requireEditableNewsroom((await params).newsroom);
   const db = getDb();
   const [sources, topics, stats] = await Promise.all([
     listSources(db, newsroom),

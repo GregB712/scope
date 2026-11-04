@@ -382,7 +382,7 @@ One transaction per file (report + all derived rows). A failure rolls back that 
 | Trigger | Entry point | Auth |
 |---|---|---|
 | Vercel Cron | `GET /api/cron/sync` → all enabled sources, sequentially within one budget | `Authorization: Bearer ${CRON_SECRET}`, constant-time comparison; 401 otherwise |
-| Manual | "Sync now" Server Action in Settings | Clerk session + newsroom ownership |
+| Manual | "Sync now" Server Action in Settings | Clerk session + newsroom ownership + admin email |
 | Local | `npm run sync [-- --newsroom <slug>]` (tsx script) | Shell access to `.env.local` |
 
 Default `vercel.json` schedule: `0 7 * * 1-5` (07:00-07:59 UTC on Hobby, weekdays), which runs after an 08:00-09:00 Athens automation. Forkers change one line; the README includes a table converting common local times to UTC and the Pro-plan option of hourly `0 * * * 1-5`. Users can also disable a source in Settings without redeploying.
@@ -653,5 +653,6 @@ Out of scope for v1, by design: AI summarization, notifications, multi-member ne
 | Topic edits | Re-process | Re-process after the response (`after()`) | Keeps the editor responsive on large archives. |
 | Tests | PGlite + Playwright | As planned; Playwright signs in with a Clerk sign-in ticket for a dedicated test user | Avoids depending on which sign-in methods an instance enables. |
 | Region | Default | `vercel.json` `regions: ["fra1"]` | The Neon database is in `eu-central-1`. |
+| Access model | One owner per newsroom; other users' newsrooms 404 | One publication per deployment: admins (`ADMIN_EMAILS`, verified Clerk emails) create and edit newsrooms they own; every other signed-in user reads all newsrooms. Slugs are unique deployment-wide (migration 0002). Reading pages sit in a `(read)` route group so the loading skeleton does not wrap Settings, which therefore returns a real 404 to readers. | The owner publishes their briefings to subscribers. Anyone who wants their own topics and folder deploys their own copy. |
 
 Bugs found and fixed during verification: correlated subqueries in select lists bound to the inner table (Drizzle renders `${table.column}` unqualified there; outer references now use `${table}.column`); Lightning CSS collapsed `backdrop-filter` + `-webkit-backdrop-filter` into the prefixed form only (standard property now written alone); a client-module function called from a server component.

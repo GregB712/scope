@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CreateNewsroomForm } from "@/components/onboarding/create-newsroom-form";
 import { DEFAULT_TOPICS } from "@/core/topics/defaults";
-import { getMyNewsrooms } from "@/server/auth";
+import { getMyNewsrooms, isAdmin, requireUserId } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Create your newsroom" };
 
+/** Creating a newsroom is for the admins of this deployment; readers go home. */
 export default async function OnboardingPage() {
+  await requireUserId();
+  if (!(await isAdmin())) redirect("/");
   const existing = await getMyNewsrooms();
   return (
     <main className="mx-auto max-w-xl px-6 py-16 sm:py-24">

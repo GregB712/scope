@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 /**
- * Visual walkthrough: every main screen renders for a signed-in owner, with
+ * Visual walkthrough: every main screen renders for the signed-in admin, with
  * screenshots for review in test-results/screens/.
  */
 const N = "/n/e2e-desk";
@@ -63,7 +63,7 @@ test("search", async ({ page }, info) => {
   await page.screenshot({ path: shot("search", info.project.name), fullPage: true });
 });
 
-test("other users' newsrooms are not found", async ({ page }) => {
-  const response = await page.goto("/n/someone-elses-desk");
+test("unknown newsrooms are not found", async ({ page }) => {
+  const response = await page.goto("/n/no-such-desk");
   expect(response?.status()).toBe(404);
 });

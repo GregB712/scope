@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NewsroomForm } from "@/components/settings/newsroom-form";
-import { getMyNewsrooms, requireNewsroom } from "@/server/auth";
+import { getMyNewsrooms, requireEditableNewsroom } from "@/server/auth";
 import { SettingsSection } from "./section";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function NewsroomSettingsPage({
   params,
 }: PageProps<"/n/[newsroom]/settings">) {
-  const newsroom = await requireNewsroom((await params).newsroom);
+  const newsroom = await requireEditableNewsroom((await params).newsroom);
   const newsrooms = await getMyNewsrooms();
   const timeZones = Intl.supportedValuesOf("timeZone");
 

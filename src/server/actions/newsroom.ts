@@ -1,9 +1,8 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { DEFAULT_TOPICS } from "@/core/topics/defaults";
-import { authorizeNewsroomAction } from "@/server/auth";
+import { authorizeAdminAction, authorizeNewsroomAction } from "@/server/auth";
 import { getDb } from "@/server/db/client";
 import { findOwnedNewsroom } from "@/server/data/newsroom-access";
 import { createNewsroom, updateNewsroom } from "@/server/data/newsrooms";
@@ -11,7 +10,7 @@ import { createTopics } from "@/server/data/topics";
 import { toActionError, type ActionResult } from "./result";
 import { newsroomSchema, slugSchema } from "./schemas";
 
-/** Creates a newsroom for the signed-in user, optionally with the suggested topics. */
+/** Creates a newsroom owned by the signed-in admin, optionally with the suggested topics. */
 export async function createNewsroomAction(input: {
   name: string;
   description?: string;
@@ -19,8 +18,7 @@ export async function createNewsroomAction(input: {
   withDefaultTopics?: boolean;
 }): Promise<ActionResult<{ slug: string }>> {
   try {
-    const { userId } = await auth();
-    if (!userId) return { ok: false, error: "Please sign in again." };
+    const { userId } = await authorizeAdminAction();
     const data = newsroomSchema.parse(input);
     const db = getDb();
     const { slug } = await createNewsroom(db, userId, data);

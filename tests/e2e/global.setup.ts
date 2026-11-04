@@ -3,35 +3,64 @@ import { existsSync } from "node:fs";
 import { createClerkClient } from "@clerk/backend";
 import { clerk, clerkSetup } from "@clerk/testing/playwright";
 import { neon } from "@neondatabase/serverless";
-import { test as setup } from "@playwright/test";
+import { type Browser, test as setup } from "@playwright/test";
 import { DEFAULT_TOPICS } from "../../src/core/topics/defaults";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
+/** The admin test user. Its email must be listed in ADMIN_EMAILS in .env.local. */
 export const E2E_EMAIL = "scope-e2e+clerk_test@example.com";
+/** A reader: signed in, not an admin. */
+export const E2E_READER_EMAIL = "scope-e2e-reader+clerk_test@example.com";
 export const E2E_NEWSROOM = "e2e-desk";
 
-setup("prepare test user, newsroom and session", async ({ page }) => {
-  setup.setTimeout(180_000);
-  await clerkSetup();
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 
-  // 1. A dedicated Clerk test user in the development instance.
-  const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
-  const existing = await clerkClient.users.getUserList({ emailAddress: [E2E_EMAIL] });
-  const user =
+/** A dedicated Clerk test user in the development instance (+clerk_test emails are verified). */
+async function testUser(email: string, firstName: string) {
+  const existing = await clerkClient.users.getUserList({ emailAddress: [email] });
+  return (
     existing.data[0] ??
     (await clerkClient.users.createUser({
-      emailAddress: [E2E_EMAIL],
+      emailAddress: [email],
       skipPasswordRequirement: true,
-      firstName: "E2E",
-    }));
+      firstName,
+    }))
+  );
+}
+
+/** Signs in with a one-time ticket in a fresh context and saves that session. */
+async function saveSession(browser: Browser, userId: string, path: string) {
+  const context = await browser.newContext({ baseURL: setup.info().project.use.baseURL });
+  const page = await context.newPage();
+  const token = await clerkClient.signInTokens.createSignInToken({ userId, expiresInSeconds: 600 });
+  await page.goto("/");
+  await clerk.signIn({ page, signInParams: { strategy: "ticket", ticket: token.token } });
+  await context.storageState({ path });
+  await context.close();
+}
+
+setup("prepare test users, newsroom and sessions", async ({ browser }) => {
+  setup.setTimeout(180_000);
+  await clerkSetup();
+  const admins = (process.env.ADMIN_EMAILS ?? "")
+    .toLowerCase()
+    .split(",")
+    .map((e) => e.trim());
+  if (!admins.includes(E2E_EMAIL)) {
+    throw new Error(`Add ${E2E_EMAIL} to ADMIN_EMAILS in .env.local to run the e2e tests.`);
+  }
+
+  // 1. An admin and a reader.
+  const user = await testUser(E2E_EMAIL, "E2E");
+  const reader = await testUser(E2E_READER_EMAIL, "Reader");
 
   // 2. A newsroom fed by the local fixtures folder, synced through the real pipeline.
   const sql = neon(process.env.DATABASE_URL!);
   const [newsroom] = await sql`
     insert into newsrooms (owner_id, name, slug, description, timezone)
     values (${user.id}, 'Global Intelligence', ${E2E_NEWSROOM}, 'Daily briefing on markets, technology and world events.', 'Europe/Athens')
-    on conflict (owner_id, slug) do update set name = excluded.name, description = excluded.description
+    on conflict (slug) do update set name = excluded.name, description = excluded.description
     returning id`;
   const topicCount =
     await sql`select count(*)::int as n from topics where newsroom_id = ${newsroom!.id}`;
@@ -50,12 +79,7 @@ setup("prepare test user, newsroom and session", async ({ page }) => {
     on conflict (provider, root_ref) do nothing`;
   execSync(`npm run sync -- --newsroom ${E2E_NEWSROOM}`, { stdio: "ignore" });
 
-  // 3. Sign in with a one-time ticket and keep the session for the other projects.
-  const token = await clerkClient.signInTokens.createSignInToken({
-    userId: user.id,
-    expiresInSeconds: 600,
-  });
-  await page.goto("/");
-  await clerk.signIn({ page, signInParams: { strategy: "ticket", ticket: token.token } });
-  await page.context().storageState({ path: "playwright/.auth/user.json" });
+  // 3. Keep a signed-in session for each role.
+  await saveSession(browser, user.id, "playwright/.auth/user.json");
+  await saveSession(browser, reader.id, "playwright/.auth/reader.json");
 });

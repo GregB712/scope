@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { slugify } from "@/core/slug";
 import { newsrooms } from "@/server/db/schema";
 import type { Database } from "@/server/db/types";
@@ -6,12 +6,13 @@ import type { AuthorizedNewsroom } from "./newsroom-access";
 
 export type NewsroomInput = { name: string; description?: string | null; timezone: string };
 
-async function uniqueSlug(db: Database, ownerId: string, name: string, exceptId?: string) {
+/** Slugs are unique across the deployment, since readers open any newsroom by URL. */
+async function uniqueSlug(db: Database, name: string, exceptId?: string) {
   const base = slugify(name) || "newsroom";
   const rows = await db
     .select({ id: newsrooms.id, slug: newsrooms.slug })
     .from(newsrooms)
-    .where(and(eq(newsrooms.ownerId, ownerId), sql`${newsrooms.slug} like ${base + "%"}`));
+    .where(sql`${newsrooms.slug} like ${base + "%"}`);
   const taken = new Set(rows.filter((r) => r.id !== exceptId).map((r) => r.slug));
   if (!taken.has(base)) return base;
   for (let n = 2; ; n++) if (!taken.has(`${base}-${n}`)) return `${base}-${n}`;
@@ -24,7 +25,7 @@ export async function createNewsroom(db: Database, ownerId: string, input: Newsr
     .values({
       ownerId,
       name: input.name.trim(),
-      slug: await uniqueSlug(db, ownerId, input.name),
+      slug: await uniqueSlug(db, input.name),
       description: input.description?.trim() || null,
       timezone: input.timezone,
     })

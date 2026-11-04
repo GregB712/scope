@@ -15,6 +15,9 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   reporter: [["list"]],
+  // The dev server compiles each route on its first visit, and parallel workers compete
+  // for it, so a first navigation can take several seconds.
+  expect: { timeout: 15_000 },
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",

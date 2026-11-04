@@ -32,6 +32,21 @@ const syncSchema = z.object({
   FILESYSTEM_SOURCE_ROOT: z.string().optional(),
 });
 
+const accessSchema = z.object({
+  // Comma-separated emails of the people who run this deployment. Everyone else who
+  // signs in is a reader. Empty means nobody can create or edit a newsroom.
+  ADMIN_EMAILS: z
+    .string()
+    .default("")
+    .transform((v) =>
+      v
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    )
+    .pipe(z.array(z.email({ message: "ADMIN_EMAILS must be comma-separated email addresses" }))),
+});
+
 function parse<T extends z.ZodType>(schema: T, name: string): z.infer<T> {
   const result = schema.safeParse(process.env);
   if (!result.success) {
@@ -51,6 +66,7 @@ function memo<T>(fn: () => T): () => T {
 export const databaseEnv = memo(() => parse(databaseSchema, "database"));
 export const cronEnv = memo(() => parse(cronSchema, "cron"));
 export const googleEnv = memo(() => parse(googleSchema, "Google Drive"));
+export const accessEnv = memo(() => parse(accessSchema, "access"));
 export const syncEnv = memo(() => {
   const env = parse(syncSchema, "sync");
   return {

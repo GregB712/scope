@@ -15,6 +15,13 @@
       "when": 1793699385650,
       "tag": "0001_report_source_links",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793777814830,
+      "tag": "0002_newsroom_slug_global",
+      "breakpoints": true
     }
   ]
 }

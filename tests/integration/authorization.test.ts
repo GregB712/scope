@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { newsrooms, sources, syncRuns, topics } from "@/server/db/schema";
 import type { Database } from "@/server/db/types";
-import { findOwnedNewsroom, type AuthorizedNewsroom } from "@/server/data/newsroom-access";
+import {
+  findNewsroom,
+  findOwnedNewsroom,
+  type AuthorizedNewsroom,
+} from "@/server/data/newsroom-access";
 import { getReport, listReports } from "@/server/data/reports";
 import { searchNewsroom } from "@/server/data/search";
 import { getSource, listSyncRuns, setSourceEnabled } from "@/server/data/sources";
@@ -23,12 +27,26 @@ import { SAMPLE_FILE, readSample } from "../support/fixtures";
 // Test doubles for the request context used by Server Actions.
 // ---------------------------------------------------------------------------
 const session = vi.hoisted(() => ({ userId: null as string | null }));
+// Alice is an admin. Bob owns a newsroom but is no longer listed. Carol is a reader.
+const emailsByUser = vi.hoisted(() => {
+  process.env.ADMIN_EMAILS = "Alice@Example.com, someone-else@example.com";
+  return {
+    user_alice: [{ emailAddress: "alice@example.com", verification: { status: "verified" } }],
+    user_bob: [{ emailAddress: "bob@example.com", verification: { status: "verified" } }],
+    // An unverified copy of an admin address must not count.
+    user_carol: [
+      { emailAddress: "carol@example.com", verification: { status: "verified" } },
+      { emailAddress: "someone-else@example.com", verification: { status: "unverified" } },
+    ],
+  } as Record<string, unknown[]>;
+});
 const state = vi.hoisted(() => ({ db: null as unknown }));
 const syncSourceById = vi.hoisted(() => vi.fn());
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: async () => ({ userId: session.userId }),
-  currentUser: async () => null,
+  currentUser: async () =>
+    session.userId ? { emailAddresses: emailsByUser[session.userId] ?? [] } : null,
 }));
 vi.mock("@/server/db/client", () => ({
   getDb: () => state.db,
@@ -114,14 +132,19 @@ beforeEach(() => {
   syncSourceById.mockReset();
 });
 
-describe("newsroom ownership", () => {
-  it("resolves a newsroom only for its owner", async () => {
+describe("newsroom lookup", () => {
+  it("resolves an owned newsroom only for its owner", async () => {
     expect(await findOwnedNewsroom(db, "user_alice", "alice-desk")).not.toBeNull();
     expect(await findOwnedNewsroom(db, "user_bob", "alice-desk")).toBeNull();
   });
+
+  it("resolves any newsroom by slug for readers", async () => {
+    expect((await findNewsroom(db, "alice-desk"))?.id).toBe(alice.id);
+    expect(await findNewsroom(db, "missing-desk")).toBeNull();
+  });
 });
 
-describe("data access is scoped to the authorized newsroom", () => {
+describe("a newsroom handle only reaches its own data", () => {
   it("sanity: Alice sees her own data", async () => {
     expect((await listReports(db, alice)).total).toBe(1);
     expect(await getReport(db, alice, aliceReportSlug)).not.toBeNull();
@@ -161,7 +184,47 @@ describe("data access is scoped to the authorized newsroom", () => {
   });
 });
 
-describe("Server Actions re-check ownership", () => {
+describe("roles: admins edit, everyone signed in reads", () => {
+  it("parses ADMIN_EMAILS case-insensitively and ignores unverified addresses", async () => {
+    const { isAdmin } = await import("@/server/auth");
+    for (const [user, expected] of [
+      ["user_alice", true],
+      ["user_bob", false],
+      ["user_carol", false],
+    ] as const) {
+      session.userId = user;
+      expect(await isAdmin()).toBe(expected);
+    }
+  });
+
+  it("lets any signed-in reader open a newsroom, and nobody signed out", async () => {
+    const { requireNewsroom } = await import("@/server/auth");
+    session.userId = "user_carol";
+    expect((await requireNewsroom("alice-desk")).id).toBe(alice.id);
+    await expect(requireNewsroom("missing-desk")).rejects.toThrow("NEXT_NOT_FOUND");
+    session.userId = null;
+    await expect(requireNewsroom("alice-desk")).rejects.toThrow("NEXT_REDIRECT");
+  });
+
+  it("allows editing only to the owner while they are an admin", async () => {
+    const { canEditNewsroom, requireEditableNewsroom } = await import("@/server/auth");
+    const cases = [
+      ["user_alice", "alice-desk", true],
+      ["user_alice", "bob-desk", false], // admin, but not the owner
+      ["user_bob", "bob-desk", false], // owner, no longer an admin
+      ["user_carol", "alice-desk", false], // reader
+    ] as const;
+    for (const [user, slug, expected] of cases) {
+      session.userId = user;
+      expect(await canEditNewsroom(slug)).toBe(expected);
+      if (!expected) await expect(requireEditableNewsroom(slug)).rejects.toThrow("NEXT_NOT_FOUND");
+    }
+  });
+});
+
+describe("Server Actions re-check the editor", () => {
+  const denied = { ok: false, error: "Only the editor of this newsroom can change it." };
+
   it("reject signed-out callers", async () => {
     const { syncNowAction } = await import("@/server/actions/sources");
     expect(await syncNowAction("alice-desk", aliceSourceId)).toEqual({
@@ -170,32 +233,68 @@ describe("Server Actions re-check ownership", () => {
     });
   });
 
-  it("reject another user's newsroom", async () => {
-    session.userId = "user_bob";
-    const { syncNowAction, setSourceEnabledAction } = await import("@/server/actions/sources");
-    const { deleteTopicAction } = await import("@/server/actions/topics");
+  it("reject readers, even though they can read the newsroom", async () => {
+    session.userId = "user_carol";
+    const { syncNowAction, setSourceEnabledAction, reprocessAction } =
+      await import("@/server/actions/sources");
+    const { createTopicAction, deleteTopicAction } = await import("@/server/actions/topics");
     const { updateNewsroomAction } = await import("@/server/actions/newsroom");
-    const denied = { ok: false, error: "You do not have access to this newsroom." };
     expect(await syncNowAction("alice-desk", aliceSourceId)).toEqual(denied);
     expect(await setSourceEnabledAction("alice-desk", aliceSourceId, false)).toEqual(denied);
+    expect(await reprocessAction("alice-desk")).toEqual(denied);
+    expect(await createTopicAction("alice-desk", { name: "Mine", aliases: [] })).toEqual(denied);
     expect(await deleteTopicAction("alice-desk", aliceTopicId)).toEqual(denied);
     expect(await updateNewsroomAction("alice-desk", { name: "Mine now", timezone: "UTC" })).toEqual(
       denied,
     );
     expect(syncSourceById).not.toHaveBeenCalled();
+    expect((await getTopic(db, alice, "cybersecurity"))?.name).toBe("Cybersecurity");
   });
 
-  it("reject another newsroom's source even from its own newsroom", async () => {
+  it("reject an owner who is no longer an admin", async () => {
     session.userId = "user_bob";
+    const { updateNewsroomAction } = await import("@/server/actions/newsroom");
+    expect(await updateNewsroomAction("bob-desk", { name: "Still mine", timezone: "UTC" })).toEqual(
+      denied,
+    );
+  });
+
+  it("reject another admin's newsroom", async () => {
+    session.userId = "user_alice";
+    const { updateNewsroomAction } = await import("@/server/actions/newsroom");
+    expect(await updateNewsroomAction("bob-desk", { name: "Taken", timezone: "UTC" })).toEqual(
+      denied,
+    );
+  });
+
+  it("let only admins create a newsroom", async () => {
+    const { createNewsroomAction } = await import("@/server/actions/newsroom");
+    session.userId = "user_carol";
+    expect(await createNewsroomAction({ name: "Carol desk", timezone: "UTC" })).toEqual({
+      ok: false,
+      error: "Only an admin can create a newsroom.",
+    });
+    session.userId = "user_alice";
+    const created = await createNewsroomAction({ name: "Bob desk", timezone: "UTC" });
+    // Slugs are unique across the deployment, so Alice's copy of "bob-desk" is renamed.
+    expect(created).toEqual({ ok: true, data: { slug: "bob-desk-2" } });
+  });
+
+  it("reject another newsroom's source even from the editor's own newsroom", async () => {
+    session.userId = "user_alice";
     const { syncNowAction } = await import("@/server/actions/sources");
-    expect(await syncNowAction("bob-desk", aliceSourceId)).toEqual({
+    const bobSource = await db
+      .insert(sources)
+      .values({ newsroomId: bob.id, provider: "filesystem", rootRef: "bob-root" })
+      .returning();
+    expect(await syncNowAction("alice-desk", bobSource[0]!.id)).toEqual({
       ok: false,
       error: "Source not found.",
     });
     expect(syncSourceById).not.toHaveBeenCalled();
   });
 
-  it("allow the owner", async () => {
+  it("allow the editor", async () => {
     session.userId = "user_alice";
     syncSourceById.mockResolvedValue({ status: "succeeded" });
     const { syncNowAction } = await import("@/server/actions/sources");

@@ -47,7 +47,18 @@
 | **Archive** | Every edition, with full-text search, topic, importance and date filters, newest/oldest order, list or grid, and year/month navigation. Several editions on the same day are grouped. |
 | **Topics** | Each research area with story counts, last activity, its latest stories and its latest per-topic brief. |
 | **Search** | PostgreSQL full-text search across briefings, stories and topics with highlighted matches. |
-| **Settings** | Newsroom details, topic editor (with aliases and "unmapped categories" from your reports), Google Drive connection, sync now, re-process, sync history, account. |
+| **Settings** | Admins only. Newsroom details, topic editor (with aliases and "unmapped categories" from your reports), Google Drive connection, sync now, re-process, sync history, account. |
+
+### Who can do what
+
+A deployment is one publication. The people listed in `ADMIN_EMAILS` run it; everyone else who signs up is a reader.
+
+| | Admin (email in `ADMIN_EMAILS`) | Reader (any other signed-in account) |
+|---|---|---|
+| Read Today, Archive, reports, Topics, Search, raw Markdown | yes | yes |
+| Create a newsroom, connect Drive, edit topics, sync, Settings | yes, for newsrooms they own | no (Settings returns 404) |
+
+Signed-out visitors see a short introduction and must sign in to read. Want your own newsroom, with your own folder and topics? Clone the repository and deploy your copy with your email in `ADMIN_EMAILS`.
 
 ## How it works
 
@@ -123,7 +134,7 @@ Only Postgres is needed. Scope stores text only and does not use object storage.
 
 1. In the Clerk dashboard, create an application. Any sign-in method works (email, Google, passkeys).
 2. Copy the publishable and secret keys into `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
-3. If your deployment is public, consider Clerk's sign-up restrictions (allowlist) so only you can create an account. See [the multi-user note](#security-model).
+3. Put your own email in `ADMIN_EMAILS` (see [Who can do what](#who-can-do-what)). Anyone else who signs up can read, not edit. To limit who can read, use Clerk's sign-up restrictions (allowlist).
 
 ## Configure Google Drive access
 
@@ -155,6 +166,7 @@ Every variable is documented in [`.env.example`](.env.example).
 | `DATABASE_URL_UNPOOLED` | for migrations | Neon direct connection string |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | yes | Clerk keys |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | no | Default `/sign-in`, `/sign-up` |
+| `ADMIN_EMAILS` | yes, to set up | Comma-separated emails of the admins. Matched against verified Clerk emails, case-insensitively. Empty means nobody can create or edit a newsroom. |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | for Drive | Base64 of the service account JSON key |
 | `CRON_SECRET` | in production | Protects the scheduled sync endpoint |
 | `SYNC_TIME_BUDGET_MS` | no | Import time per run, default 240000 |
@@ -176,7 +188,7 @@ This applies the SQL in [`drizzle/`](drizzle) to the database in `DATABASE_URL_U
 npm run dev
 ```
 
-Open <http://localhost:3000>, create an account, and follow the setup steps:
+Open <http://localhost:3000>, create an account with an email listed in `ADMIN_EMAILS`, and follow the setup steps:
 
 1. **Create your newsroom**: name, time zone, and optionally the suggested topics.
 2. **Connect your Google Drive folder**: share it with the service-account email shown on screen, paste the folder link, **Check** (shows the folder name and how many Markdown files Scope can see), then **Connect**.
@@ -224,7 +236,7 @@ The sync is safe against the platform's realities: Vercel may skip or occasional
 ## Deploy on Vercel
 
 1. Push your fork to GitHub and **import** it in Vercel (framework: Next.js).
-2. Add the environment variables from the table above in **Project Settings > Environment Variables** (do not set `ENABLE_FILESYSTEM_SOURCE`). Generate a fresh `CRON_SECRET`.
+2. Add the environment variables from the table above in **Project Settings > Environment Variables** (do not set `ENABLE_FILESYSTEM_SOURCE`). Set `ADMIN_EMAILS` to your own email and generate a fresh `CRON_SECRET`.
 3. Set `"regions"` in `vercel.json` to the region nearest your Neon database.
 4. Run migrations against the production database from your machine: `DATABASE_URL_UNPOOLED=<production direct URL> npm run db:migrate`. Migrations are deliberately not part of the build, so preview deployments can never change the production schema.
 5. Deploy. Vercel registers the cron job from `vercel.json` automatically.
@@ -297,7 +309,7 @@ src/
   components/          ui/ primitives, newsroom/, markdown/, settings/
   core/                pure logic: parser, topic matching, time, hashing
   server/
-    auth/              session + newsroom ownership (the only source of AuthorizedNewsroom)
+    auth/              session, admin role and newsroom access (the only source of AuthorizedNewsroom)
     data/              every query, scoped to an authorized newsroom
     db/                Drizzle schema and clients
     sources/           read-only Google Drive and dev filesystem providers
@@ -311,7 +323,8 @@ docs/                  architecture, Google setup, screenshots
 
 ### Security model
 
-- Authorization is checked on the server for every page, Server Action and route. Data functions only accept an `AuthorizedNewsroom`, a type that can only be produced by an ownership check, so an unscoped query does not compile. Other users' newsrooms return 404.
+- Authorization is checked on the server for every page, Server Action and route. Data functions only accept an `AuthorizedNewsroom`, a type that can only be produced by an access check, so an unscoped query does not compile.
+- Any signed-in user may read. Every change goes through `authorizeNewsroomAction`, which requires the newsroom's owner to still be an admin; removing an email from `ADMIN_EMAILS` revokes editing at once. Settings and setup pages return 404 to readers.
 - Drive access is read-only three ways: scope, Viewer sharing, and a code surface with no write calls (tested).
 - Report Markdown is rendered without raw HTML, with sanitized URLs and `rel="noopener noreferrer"` on external links.
-- One service account serves a deployment. A folder binds to one newsroom only, and only for a user whose verified email owns it. For a public deployment, also restrict sign-ups in Clerk.
+- One service account serves a deployment. A folder binds to one newsroom only, and only for an admin whose verified email owns it.

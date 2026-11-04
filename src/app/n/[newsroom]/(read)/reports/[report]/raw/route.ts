@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/server/db/client";
-import { findOwnedNewsroom } from "@/server/data/newsroom-access";
+import { findNewsroom } from "@/server/data/newsroom-access";
 import { getReport } from "@/server/data/reports";
 
-/** The original Markdown, exactly as imported. Owner only. */
+/** The original Markdown, exactly as imported. Any signed-in reader. */
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/n/[newsroom]/reports/[report]/raw">,
@@ -12,7 +12,7 @@ export async function GET(
   const { userId } = await auth();
   if (!userId) return new Response("Unauthorized", { status: 401 });
   const db = getDb();
-  const newsroom = await findOwnedNewsroom(db, userId, slug);
+  const newsroom = await findNewsroom(db, slug);
   const found = newsroom ? await getReport(db, newsroom, reportSlug) : null;
   if (!found) return new Response("Not found", { status: 404 });
   const fileName = found.report.sourceFileName.replace(/["\\\r\n]/g, "");

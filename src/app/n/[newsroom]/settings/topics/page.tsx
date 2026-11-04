@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { TopicEditor, UnmappedCategories } from "@/components/settings/topic-editor";
-import { requireNewsroom } from "@/server/auth";
+import { requireEditableNewsroom } from "@/server/auth";
 import { getDb } from "@/server/db/client";
 import { listTopics, listUnmappedCategories } from "@/server/data/topics";
 import { SettingsSection } from "../section";
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Topics" };
 export default async function TopicSettingsPage({
   params,
 }: PageProps<"/n/[newsroom]/settings/topics">) {
-  const newsroom = await requireNewsroom((await params).newsroom);
+  const newsroom = await requireEditableNewsroom((await params).newsroom);
   const db = getDb();
   const [topics, unmapped] = await Promise.all([
     listTopics(db, newsroom),

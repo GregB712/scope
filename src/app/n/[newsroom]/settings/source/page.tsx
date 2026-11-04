@@ -8,7 +8,7 @@ import { ReprocessButton } from "@/components/settings/reprocess-button";
 import { SourceToggle } from "@/components/settings/source-toggle";
 import { SyncNowButton } from "@/components/settings/sync-now-button";
 import { syncEnv } from "@/env";
-import { requireNewsroom } from "@/server/auth";
+import { requireEditableNewsroom } from "@/server/auth";
 import { getDb } from "@/server/db/client";
 import { getLatestSyncRun, listSources } from "@/server/data/sources";
 import { googleSetupStatus } from "@/server/sources/service-account";
@@ -21,7 +21,7 @@ const PROVIDER_LABEL = { google_drive: "Google Drive", filesystem: "Local folder
 export default async function SourceSettingsPage({
   params,
 }: PageProps<"/n/[newsroom]/settings/source">) {
-  const newsroom = await requireNewsroom((await params).newsroom);
+  const newsroom = await requireEditableNewsroom((await params).newsroom);
   const db = getDb();
   const [sources, lastRun] = await Promise.all([
     listSources(db, newsroom),
